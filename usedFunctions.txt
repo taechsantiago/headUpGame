@@ -1,0 +1,11 @@
+pygame.display.set_mode : This function will create a display Surface. Note that calling this function implicitly initializes pygame.display, if it was not initialized before. The size argument is a pair of numbers representing the width and height.
+
+pygame.display.set_caption : If the display has a window title, this function will change the name on the window.
+
+event.type : event type identifier.
+
+pygame.QUIT : Is a constant representing the type of event, If the Event object is a quit event, then the pygame.quit() and sys.exit() functions are called. Your programs should always call pygame.quit() before they call sys.exit() to terminate the program. (https://eng.libretexts.org/Bookshelves/Computer_Science/Programming_Languages/Book%3A_Making_Games_with_Python_and_Pygame_(Sweigart)/03%3A_Pygame_Basics/3.06%3A_The_QUIT_Event_and_pygame.quit()_Function)
+
+is sent when the user clicks the window's "X" button, or when the system 'asks' for the process to quit. If ignored, it can still be killed by the system. It lets you save, before quitting. (https://stackoverflow.com/questions/10080715/pygame-event-event-type-pygame-quit-confusion/10166066)
+
+pygame.quit() : Uninitialize all pygame modules that have previously been initialized.
