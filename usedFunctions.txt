@@ -9,3 +9,12 @@ pygame.QUIT : Is a constant representing the type of event, If the Event object 
 is sent when the user clicks the window's "X" button, or when the system 'asks' for the process to quit. If ignored, it can still be killed by the system. It lets you save, before quitting. (https://stackoverflow.com/questions/10080715/pygame-event-event-type-pygame-quit-confusion/10166066)
 
 pygame.quit() : Uninitialize all pygame modules that have previously been initialized.
+
+pygame.image.load() : Load an image from a file source. You can pass either a filename, a Python file-like object, or a pathlib.Path. Use the convert_alpha() method after loading so that the image has per pixel transparency.
+
+To position an object on the screen, we need to tell the blit() function where to put the image. In pygame we always pass positions as an (X,Y) coordinate. This represents the number of pixels to the right, and the number of pixels down to place the image. The top-left corner of a Surface is coordinate (0, 0).
+
+blit() function : Pygame has a display Surface. This is basically an image that is visible on the screen, and the image is made up of pixels. The main way you change these pixels is by calling the blit() function. This copies the pixels from one image onto another.
+
+
+pygame.display.update() : This function is like an optimized version of pygame.display.flip() for software displays. It allows only a portion of the screen to updated, instead of the entire area. If no argument is passed it updates the entire Surface area like pygame.display.flip().
