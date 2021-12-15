@@ -16,37 +16,233 @@
 #-- 1. Librerías --------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
 import pygame  #Conjunto de modulos de python diseñado para el desarrollo de videojuegos
+import json    #Modulo de python para el manejo de datos de formato JSON
+import numpy as np
 
 #------------------------------------------------------------------------------------------------
 #-- 2. Inicialización ---------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
-
-#Inicialización de pygame
-pygame.init()
+pygame.init()#Inicialización de pygame
+clock = pygame.time.Clock() #inicialización del reloj, util para las animaciones y actualización
 
 #---- Se define las dimensiones de la ventana principal del juego -------------------------------
-SCREEN_WIDTH = 512  #ancho
-SCREEN_HEIGHT = 512  #alto
+SCREEN_WIDTH = 1024  #ancho
+SCREEN_HEIGHT = 1024 #alto
+
+#---- Se definen como constante colores utiles --------------------------------------------------
+WHITE = (255, 255, 255)
 
 #---- Se crea la ventana principal del juego ----------------------------------------------------
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))#creación de la ventana pygame
 pygame.display.set_caption('headUpGame')                       #cambio del titulo de la ventana
 
-#---- Se carga la imagen de fondo para la ventana y se configura para mantener la posible -------
-#---- transparencia de la imagen png cargada ----------------------------------------------------
-backGroundImage = pygame.image.load('./assets/smallBlueNebula.png').convert_alpha()
-
+#---- Se cargan las imagenes y se configura para mantener la posible transparencia de la --------
+#---- imagen png cargada ------------------------------------------------------------------------
+backGroundImage = pygame.image.load('./assets/largeBlueNebula.png').convert_alpha()#Fondo
 
 
 #------------------------------------------------------------------------------------------------
-#-- 3. Logica para el videojuego ----------------------------------------------------------------
+#-- 3. Sprites ----------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------
+class sprites:
+    #Clase para la carga y la definición de las imagenes que se usan como sprites en animación
+    def __init__(self, filename):
+        #Lectura del archivo JSON para determinar los parametros del sprite
+        self.filename = filename
+        with open(self.filename) as f: #Se abre el archivo para su lectura
+            self.data = json.load(f)   #Se mapea el archivo a la variable data
+        f.close                        #Se cierra el archivo para ahorrar recursos
+
+    def spriteDimensions(self, imageName):
+        escale = self.data[imageName]['escale']         #valores para el escalado de la imagen
+        downsizing = self.data[imageName]['downsizing'] #valores para el ajuste del rectangulo
+        offset = self.data[imageName]['offset']         #valores para el offset de la imagen
+
+        image = pygame.image.load('./assets/robot/'+imageName).convert_alpha()
+
+        #Tener en cuenta que se redimensiona la imagen del personaje para efectos esteticos y se
+        #Asigna a la instancia creada en la inicialización
+        image = pygame.transform.scale(image, (escale['w'],escale['h']))
+        
+        #Se obtiene un rectangulo preliminar en el limite de la imagen 
+        rect = image.get_rect() #se obtiene una area rectangular al rededor de la imagen
+
+        #Tamaño para modificar el rectangulo que se usará para la interacción según el anterior
+        width = rect.width - downsizing['w']
+        height = rect.height - downsizing['h']
+
+        #Se crea el rectangulo por medio de pygame según el tamaño fijado anteriormente
+        rect = pygame.Rect(0, 0, width, height)
+        rect.center = (255,350)#Se modifica el centro del rectangulo a las coordenadas
+
+        returnList = []
+        returnList.append(image)
+        returnList.append(rect)
+        returnList.append(offset)
+
+        return returnList
+
+#------------------------------------------------------------------------------------------------
+#-- 4. Personaje --------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------
+class Player(pygame.sprite.Sprite):
+    #Se hace uso de pygame.sprite.Sprite que facilita tanto las colisiones como el movimiento y
+    #el manejo de sprites (cambios y transiciones)
+
+    #---- Inicialización del personaje ----------------------------------------------------------
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)#constructor de la clase padre
+        self.LEFT_KEY, self.RIGHT_KEY, self.FACING_LEFT = False, False, False
+        self.loadFrames()                  #se cargan las diferentes images que serán los sprites
+        self.rect = self.idleLeftRects[0]
+        self.currentFrame = 0
+        self.lastFrame = 0
+        self.velocity = 0
+        self.state = 'idle'
+        self.currentImage = self.idleLeftFrames[0]
+        self.offsetX = 0
+        self.offsetY = 0
+
+    def draw(self, display):
+        #---- Actualización del personaje en la pantalla ------------------------------------------
+        #Se utilizan las coordenadas del rectangulo para el dibujo del personaje con un offset
+        #el offset evita problemas de colisión, es el rectangulo el que se toma en cuenta
+        #screen.blit(image, (rect.x-offset['x'], rect.y-offset['y']))
+        display.blit(self.currentImage, (self.rect.x-self.offsetX, self.rect.y-self.offsetY))
+
+        #BORRAR SIGUIENTE LINEA PARA ENTREGAR
+        pygame.draw.rect(display, WHITE, self.rect, 2)#se dibuja el rectangulo BORRAR PARA ENTREGAR
+
+    def moving(self):
+        self.velocity = 0
+        if self.LEFT_KEY:
+            self.velocity = -2
+        elif self.RIGHT_KEY:
+            self.velocity = 2
+        self.rect.x += self.velocity
+        self.setState()
+        self.animate()
+
+    def setState(self):
+        self.state = 'idle'
+        if (self.velocity > 0):
+            self.state = 'moving right'
+        elif (self.velocity < 0):
+            self.state = 'moving left'
+    
+    def animate(self):
+        currentTime = pygame.time.get_ticks()
+        if (self.state == 'idle'):
+            #se identifica cada 200 milisegundos para efectuar la actualización de los sprites
+            if ((currentTime - self.lastFrame) > 300):
+                self.lastFrame = currentTime #se vuelve a cambiar el tiempo con el tiempo antual
+                #se identifica cual es el sprite siguiente en la animación
+                #el operador % permite que se cambie el indice del sprite como un loop
+                #si la lista de sprites tiene 4 posiciones, currentFrame varia entre 0 y 3
+                self.currentFrame = ((self.currentFrame+1)%len(self.idleLeftFrames))
+                if self.FACING_LEFT:
+                    self.currentImage = self.idleLeftFrames[self.currentFrame]
+                    #self.rect = self.idleLeftRects[self.currentFrame]
+                    self.offsetX = self.idleLeftOffset[self.currentFrame]['x']
+                    self.offsetY = self.idleLeftOffset[self.currentFrame]['y']
+
+                elif not self.FACING_LEFT:
+                    self.currentImage = self.idleRightFrames[self.currentFrame]
+                    #self.rect = self.idleRightRects[self.currentFrame]
+                    self.offsetX = self.idleRightOffset[self.currentFrame]['x']
+                    self.offsetY = self.idleRightOffset[self.currentFrame]['y']
+
+                
+        else:
+            #en este caso se identifica cada 100 milisegundos pues requiere de una actualización
+            #más fluida para el movimiento caminando
+            if ((currentTime - self.lastFrame) > 150):
+                self.lastFrame = currentTime
+                self.currentFrame = ((self.currentFrame+1)%len(self.walkLeftFrames))
+                if self.state == 'moving left':
+                    self.currentImage = self.walkLeftFrames[self.currentFrame]
+                    #self.rect = self.walkLeftRects[self.currentFrame]
+                    self.offsetX = self.walkLeftOffset[self.currentFrame]['x']
+                    self.offsetY = self.walkLeftOffset[self.currentFrame]['y']
+
+                elif self.state == 'moving right':
+                    self.currentImage = self.walkRightFrames[self.currentFrame]
+                    #self.rect = self.walkRightRects[self.currentFrame]
+                    self.offsetX = self.walkRightOffset[self.currentFrame]['x']
+                    self.offsetY = self.walkRightOffset[self.currentFrame]['y']
+           
+    def loadFrames(self):
+        idleSpritesRobot = sprites('./assets/robot/idle/idle.json')
+        idleFramesRect = [idleSpritesRobot.spriteDimensions("idle/Idle_01.png"),
+                           idleSpritesRobot.spriteDimensions("idle/Idle_02.png"),
+                           idleSpritesRobot.spriteDimensions("idle/Idle_03.png"),
+                           idleSpritesRobot.spriteDimensions("idle/Idle_04.png"),
+                           idleSpritesRobot.spriteDimensions("idle/Idle_05.png"),
+                           idleSpritesRobot.spriteDimensions("idle/Idle_06.png")]
+        idleFramesRect = np.array(idleFramesRect, dtype=object)
+
+        self.idleLeftFrames = idleFramesRect[:, 0]
+        self.idleLeftRects  = idleFramesRect[:, 1]
+        self.idleLeftOffset = idleFramesRect[:, 2]
+
+        self.idleRightFrames = []
+        self.idleRightRects  = idleFramesRect[:, 1]
+        self.idleRightOffset  = idleFramesRect[:, 2]
+        for frame in self.idleLeftFrames:
+            self.idleRightFrames.append(pygame.transform.flip(frame, True, False))
+
+
+        walkLeftSpritesRobot = sprites('./assets/robot/walk/walk.json')
+        walkFramesRect = [walkLeftSpritesRobot.spriteDimensions("walk/Walk_01.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_02.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_03.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_04.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_05.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_06.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_07.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_08.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_09.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_10.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_11.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_12.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_13.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_14.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_15.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_16.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_17.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_18.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_19.png"),
+                           walkLeftSpritesRobot.spriteDimensions("walk/Walk_20.png")]
+        walkFramesRect = np.array(walkFramesRect, dtype=object)
+
+        self.walkLeftFrames = walkFramesRect[:, 0]
+        self.walkLeftRects  = walkFramesRect[:, 1]
+        self.walkLeftOffset = walkFramesRect[:, 2]
+
+        self.walkRightFrames = []
+        self.walkRightRects  = walkFramesRect[:, 1]
+        self.walkRightOffset  = walkFramesRect[:, 2]
+        for frame in self.walkLeftFrames:
+            self.walkRightFrames.append(pygame.transform.flip(frame, True, False))
+    
+robotPlayer = Player()#Creación del personaje
+
+#------------------------------------------------------------------------------------------------
+#-- 5. Funcionamiento e integración -------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
 
 #---- Se define el ciclo con el cual se evita el cierre de la ventana principal creada ----------
 playing = True #Variable de control para el ciclo mencionado
 while playing:
+    #------ Actualización del reloj por frame ---------------------------------------------------
+    clock.tick(60) #se realiza cada 60 segundos la actualización en pantalla (para animaciones)
+
     #------ Cambio del fondo de la ventana  -----------------------------------------------------
     screen.blit(backGroundImage, (0,0)) #Cambia los pixeles de la ventana, (recurso, coordenada)
+
+    #------ Actualización y dibujo de sprites ---------------------------------------------------
+    robotPlayer.moving()
+    robotPlayer.draw(screen)
 
     #------ Manejo de eventos  ------------------------------------------------------------------
     #------ pygame.event.get() obtendrá todos los eventos y los eliminará de la cola ------------
@@ -54,6 +250,17 @@ while playing:
         #------ el evento es de tipo QUIT cuando se presiona el boton "X" de la ventana ---------
         if event.type == pygame.QUIT:
             playing = False #Se termina el ciclo para permitir el cierre de la ventana
+        
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT:
+                robotPlayer.LEFT_KEY, robotPlayer.FACING_LEFT = True,True
+            elif event.key == pygame.K_RIGHT:
+                robotPlayer.RIGHT_KEY, robotPlayer.FACING_LEFT = True,False
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_LEFT:
+                robotPlayer.LEFT_KEY = False
+            elif event.key == pygame.K_RIGHT:
+                robotPlayer.RIGHT_KEY = False
 
     #------ Actualización grafica de la ventana  ------------------------------------------------
     pygame.display.update() #Actualiza la ventana, al pasar parametro actualiza una porción
