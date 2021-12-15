@@ -18,3 +18,12 @@ blit() function : Pygame has a display Surface. This is basically an image that 
 
 
 pygame.display.update() : This function is like an optimized version of pygame.display.flip() for software displays. It allows only a portion of the screen to updated, instead of the entire area. If no argument is passed it updates the entire Surface area like pygame.display.flip().
+
+
+pygame.transform.scale() : resize to new resolution given as (width, height). This is a fast scale operation that does not sample the results.
+
+
+CLOCK
+tick() : update the clock. This method should be called once per frame. It will compute how many milliseconds have passed since the previous call. this function uses SDL_Delay function which is not accurate on every platform, but does not use much CPU. Use tick_busy_loop if you want an accurate timer, and don't mind chewing CPU.
+
+pygame.time.get_ticks() : Return the number of milliseconds since pygame.init() was called. Before pygame is initialized this will always be 0.
