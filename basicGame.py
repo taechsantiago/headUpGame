@@ -71,13 +71,9 @@ class sprites:
         width = rect.width - downsizing['w']
         height = rect.height - downsizing['h']
 
-        #Se crea el rectangulo por medio de pygame según el tamaño fijado anteriormente
-        rect = pygame.Rect(0, 0, width, height)
-        rect.center = (255,350)#Se modifica el centro del rectangulo a las coordenadas
-
         returnList = []
         returnList.append(image)
-        returnList.append(rect)
+        returnList.append([width, height])
         returnList.append(offset)
 
         return returnList
@@ -94,7 +90,11 @@ class Player(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)#constructor de la clase padre
         self.LEFT_KEY, self.RIGHT_KEY, self.FACING_LEFT = False, False, False
         self.loadFrames()                  #se cargan las diferentes images que serán los sprites
-        self.rect = self.idleLeftRects[0]
+        #se inicializan las variables que se utilizan en el personaje
+        self.rectPosX = 255
+        self.rectPosY = 350
+        self.rect = pygame.Rect(self.rectPosX, self.rectPosY, self.idleLeftRects[0][0], self.idleLeftRects[0][1])
+        self.rect.center = (self.rectPosX,self.rectPosY)#Se modifica el centro del rectangulo a las coordenadas
         self.currentFrame = 0
         self.lastFrame = 0
         self.velocity = 0
@@ -114,12 +114,13 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.rect(display, WHITE, self.rect, 2)#se dibuja el rectangulo BORRAR PARA ENTREGAR
 
     def moving(self):
+        #SE DEBE MODIFICAR ESTA FUNCIÓN PARA EL MOVIMIENTO VERTICAL
         self.velocity = 0
         if self.LEFT_KEY:
             self.velocity = -2
         elif self.RIGHT_KEY:
             self.velocity = 2
-        self.rect.x += self.velocity
+        self.rectPosX += self.velocity
         self.setState()
         self.animate()
 
@@ -131,6 +132,8 @@ class Player(pygame.sprite.Sprite):
             self.state = 'moving left'
     
     def animate(self):
+        #SE DEBE MODIFICAR ESTA FUNCIÓN PARA la animación del movimiento vertical
+        
         currentTime = pygame.time.get_ticks()
         if (self.state == 'idle'):
             #se identifica cada 200 milisegundos para efectuar la actualización de los sprites
@@ -142,13 +145,15 @@ class Player(pygame.sprite.Sprite):
                 self.currentFrame = ((self.currentFrame+1)%len(self.idleLeftFrames))
                 if self.FACING_LEFT:
                     self.currentImage = self.idleLeftFrames[self.currentFrame]
-                    #self.rect = self.idleLeftRects[self.currentFrame]
+                    
+                    self.rect.update(self.rectPosX, self.rectPosY, self.idleLeftRects[self.currentFrame][0], self.idleLeftRects[self.currentFrame][1])
                     self.offsetX = self.idleLeftOffset[self.currentFrame]['x']
                     self.offsetY = self.idleLeftOffset[self.currentFrame]['y']
 
                 elif not self.FACING_LEFT:
                     self.currentImage = self.idleRightFrames[self.currentFrame]
-                    #self.rect = self.idleRightRects[self.currentFrame]
+                    
+                    self.rect.update(self.rectPosX, self.rectPosY, self.idleRightRects[self.currentFrame][0], self.idleRightRects[self.currentFrame][1])                    
                     self.offsetX = self.idleRightOffset[self.currentFrame]['x']
                     self.offsetY = self.idleRightOffset[self.currentFrame]['y']
 
@@ -161,13 +166,15 @@ class Player(pygame.sprite.Sprite):
                 self.currentFrame = ((self.currentFrame+1)%len(self.walkLeftFrames))
                 if self.state == 'moving left':
                     self.currentImage = self.walkLeftFrames[self.currentFrame]
-                    #self.rect = self.walkLeftRects[self.currentFrame]
+
+                    self.rect.update(self.rectPosX, self.rectPosY, self.walkLeftRects[self.currentFrame][0], self.walkLeftRects[self.currentFrame][1])
                     self.offsetX = self.walkLeftOffset[self.currentFrame]['x']
                     self.offsetY = self.walkLeftOffset[self.currentFrame]['y']
 
                 elif self.state == 'moving right':
                     self.currentImage = self.walkRightFrames[self.currentFrame]
-                    #self.rect = self.walkRightRects[self.currentFrame]
+
+                    self.rect.update(self.rectPosX, self.rectPosY, self.walkRightRects[self.currentFrame][0], self.walkRightRects[self.currentFrame][1])
                     self.offsetX = self.walkRightOffset[self.currentFrame]['x']
                     self.offsetY = self.walkRightOffset[self.currentFrame]['y']
            
@@ -224,6 +231,9 @@ class Player(pygame.sprite.Sprite):
         self.walkRightOffset  = walkFramesRect[:, 2]
         for frame in self.walkLeftFrames:
             self.walkRightFrames.append(pygame.transform.flip(frame, True, False))
+
+
+        #ESPACIO PARA INTEGRAR LOS SPRITES DEL MOVIEMINTO VERTICAL
     
 robotPlayer = Player()#Creación del personaje
 
