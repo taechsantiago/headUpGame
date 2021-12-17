@@ -27,6 +27,9 @@ import numpy as np
 pygame.init()#Inicialización de pygame
 clock = pygame.time.Clock() #inicialización del reloj, util para las animaciones y actualización
 
+#---- Se definen las variables del juego --------------------------------------------------------
+GRAVEDAD = 1
+
 #---- Se define las dimensiones de la ventana principal del juego -------------------------------
 SCREEN_WIDTH = 1024  #ancho
 SCREEN_HEIGHT = 1024 #alto
@@ -90,7 +93,7 @@ class Player(pygame.sprite.Sprite):
     #---- Inicialización del personaje ----------------------------------------------------------
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)#constructor de la clase padre
-        self.LEFT_KEY, self.RIGHT_KEY, self.FACING_LEFT = False, False, False
+        self.LEFT_KEY, self.RIGHT_KEY, self.FACING_LEFT, self.UP_KEY = False, False, False, False
         self.loadFrames()                  #se cargan las diferentes images que serán los sprites
         #se inicializan las variables que se utilizan en el personaje
         self.rectPosX = 255
@@ -99,6 +102,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.center = (self.rectPosX,self.rectPosY)#Se modifica el centro del rectangulo a las coordenadas
         self.currentFrame = 0
         self.lastFrame = 0
+        self.velocity_y = 0
         self.velocity = 0
         self.state = 'idle'
         self.currentImage = self.idleLeftFrames[0]
@@ -118,11 +122,19 @@ class Player(pygame.sprite.Sprite):
     def moving(self):
         #SE DEBE MODIFICAR ESTA FUNCIÓN PARA EL MOVIMIENTO VERTICAL
         self.velocity = 0
+
+        if self.UP_KEY:
+            self.velocity_y = -11
         if self.LEFT_KEY:
             self.velocity = -2
         elif self.RIGHT_KEY:
             self.velocity = 2
         self.rectPosX += self.velocity
+
+        # GRAVEDAD
+        self.velocity_y += GRAVEDAD
+        self.rectPosY += self.velocity_y
+
         self.setState()
         self.animate()
 
@@ -268,12 +280,15 @@ while playing:
                 robotPlayer.LEFT_KEY, robotPlayer.FACING_LEFT = True,True
             elif event.key == pygame.K_RIGHT:
                 robotPlayer.RIGHT_KEY, robotPlayer.FACING_LEFT = True,False
+            elif event.key == pygame.K_UP:
+                robotPlayer.UP_KEY = True
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_LEFT:
                 robotPlayer.LEFT_KEY = False
             elif event.key == pygame.K_RIGHT:
                 robotPlayer.RIGHT_KEY = False
-
+            elif event.key == pygame.K_UP:
+                robotPlayer.UP_KEY = False
     #------ Actualización grafica de la ventana  ------------------------------------------------
     pygame.display.update() #Actualiza la ventana, al pasar parametro actualiza una porción
 
