@@ -320,7 +320,7 @@ while playing:
                 robotPlayer.LEFT_KEY, robotPlayer.FACING_LEFT = True,True
             elif event.key == pygame.K_RIGHT:
                 robotPlayer.RIGHT_KEY, robotPlayer.FACING_LEFT = True,False
-            elif event.key == pygame.K_UP:    # se debe reiniciar UP_KEY con False en el while
+            elif event.key == pygame.K_UP:    # se debe reiniciar UP_KEY con False en el ciclo while
                 robotPlayer.UP_KEY = True
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_LEFT:
