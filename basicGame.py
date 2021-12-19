@@ -144,6 +144,8 @@ class Player(pygame.sprite.Sprite):
             self.state = 'moving right'
         elif (self.velocity < 0):
             self.state = 'moving left'
+        if (self.velocity_y < 0):
+            self.state = 'jumping'
     
     def animate(self):
         #SE DEBE MODIFICAR ESTA FUNCIÓN PARA la animación del movimiento vertical
@@ -152,7 +154,7 @@ class Player(pygame.sprite.Sprite):
         if (self.state == 'idle'):
             #se identifica cada 200 milisegundos para efectuar la actualización de los sprites
             if ((currentTime - self.lastFrame) > 300):
-                self.lastFrame = currentTime #se vuelve a cambiar el tiempo con el tiempo antual
+                self.lastFrame = currentTime #se vuelve a cambiar el tiempo con el tiempo actual
                 #se identifica cual es el sprite siguiente en la animación
                 #el operador % permite que se cambie el indice del sprite como un loop
                 #si la lista de sprites tiene 4 posiciones, currentFrame varia entre 0 y 3
@@ -171,7 +173,17 @@ class Player(pygame.sprite.Sprite):
                     self.offsetX = self.idleRightOffset[self.currentFrame]['x']
                     self.offsetY = self.idleRightOffset[self.currentFrame]['y']
 
-                
+        elif (self.state == 'jumping'):
+            #para el salto se hace cada 100 milisegundos para una actualización
+            #más fluida para el movimiento de salto
+            if ((currentTime - self.lastFrame) > 150):
+                self.lastFrame = currentTime
+                self.currentFrame = ((self.currentFrame+1)%len(self.jumpFrames))
+                self.currentImage = self.jumpFrames[self.currentFrame]
+                self.rect.update(self.rectPosX, self.rectPosY, self.jumpRects[self.currentFrame][0], self.jumpRects[self.currentFrame][1])
+                self.offsetX = self.jumpOffset[self.currentFrame]['x']
+                self.offsetY = self.jumpOffset[self.currentFrame]['y']
+
         else:
             #en este caso se identifica cada 100 milisegundos pues requiere de una actualización
             #más fluida para el movimiento caminando
@@ -248,7 +260,35 @@ class Player(pygame.sprite.Sprite):
 
 
         #ESPACIO PARA INTEGRAR LOS SPRITES DEL MOVIEMINTO VERTICAL
-    
+
+        jumpSpritesRobot = sprites('./assets/robot/jump/jump.json')
+        jumpFramesRect = [jumpSpritesRobot.spriteDimensions("jump/Jump_01.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_02.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_03.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_04.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_05.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_06.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_07.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_08.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_09.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_10.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_11.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_12.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_13.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_14.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_15.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_16.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_17.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_18.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_19.png"),
+                           jumpSpritesRobot.spriteDimensions("jump/Jump_20.png")]
+        jumpFramesRect = np.array(jumpFramesRect, dtype=object)
+
+        self.jumpFrames = jumpFramesRect[:, 0]
+        self.jumpRects  = jumpFramesRect[:, 1]
+        self.jumpOffset = jumpFramesRect[:, 2]
+
+
 robotPlayer = Player()#Creación del personaje
 
 #------------------------------------------------------------------------------------------------
@@ -280,7 +320,7 @@ while playing:
                 robotPlayer.LEFT_KEY, robotPlayer.FACING_LEFT = True,True
             elif event.key == pygame.K_RIGHT:
                 robotPlayer.RIGHT_KEY, robotPlayer.FACING_LEFT = True,False
-            elif event.key == pygame.K_UP:
+            elif event.key == pygame.K_UP:    # se debe reiniciar UP_KEY con False en el while
                 robotPlayer.UP_KEY = True
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_LEFT:
