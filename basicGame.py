@@ -4,11 +4,11 @@
 #-------      Estudiante de Ingeniería de Telecomunicaciones  -----------------------------------
 #-------      CC 1000393907, Wpp 3108983553 -----------------------------------------------------
 #--------                                      --------------------------------------------------
-#-------      Emmanuel el paquete del equipo   --------------------------------------------------     
+#-------      Emmanuel Arango A    emmanuel.arango@udea.edu.co  ---------------------------------
+#-------      Estidiante de Ingeniería de Telecomunicaciones ------------------------------------
+#-------      CC 1017214646, Wpp 3122859327 -----------------------------------------------------
 #------------------------------------------------------------------------------------------------
-#-------      Santiago Taborda E   santiago.tabordae@udea.edu.co --------------------------------
-#-------      Estudiante de Ingeniería de Telecomunicaciones  -----------------------------------
-#-------      CC 1000393907, Wpp 3108983553 -----------------------------------------------------
+#------------------------------------------------------------------------------------------------
 #------- Curso Básico de Procesamiento de Imágenes y Visión Artificial---------------------------
 #------- V2 Abril de 2021------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
@@ -140,12 +140,17 @@ class Player(pygame.sprite.Sprite):
 
     def setState(self):
         self.state = 'idle'
-        if (self.velocity > 0):
+        if (self.velocity_y != 0 and self.velocity < 0): 
+            self.state = 'jumping left'
+        elif (self.velocity_y != 0 and self.velocity > 0):
+            self.state = 'jumping right'
+        elif (self.velocity_y != 0 and self.velocity == 0):
+            self.state = 'jumping right'
+        elif (self.velocity > 0):
             self.state = 'moving right'
         elif (self.velocity < 0):
             self.state = 'moving left'
-        if (self.velocity_y < 0):
-            self.state = 'jumping'
+        
     
     def animate(self):
         #SE DEBE MODIFICAR ESTA FUNCIÓN PARA la animación del movimiento vertical
@@ -173,17 +178,28 @@ class Player(pygame.sprite.Sprite):
                     self.offsetX = self.idleRightOffset[self.currentFrame]['x']
                     self.offsetY = self.idleRightOffset[self.currentFrame]['y']
 
-        elif (self.state == 'jumping'):
+        elif (self.state == 'jumping left'):
             #para el salto se hace cada 100 milisegundos para una actualización
             #más fluida para el movimiento de salto
             if ((currentTime - self.lastFrame) > 150):
                 self.lastFrame = currentTime
-                self.currentFrame = ((self.currentFrame+1)%len(self.jumpFrames))
-                self.currentImage = self.jumpFrames[self.currentFrame]
-                self.rect.update(self.rectPosX, self.rectPosY, self.jumpRects[self.currentFrame][0], self.jumpRects[self.currentFrame][1])
-                self.offsetX = self.jumpOffset[self.currentFrame]['x']
-                self.offsetY = self.jumpOffset[self.currentFrame]['y']
+                self.currentFrame = ((self.currentFrame+1)%len(self.jumpLeftFrames))
+                self.currentImage = self.jumpLeftFrames[self.currentFrame]
+                self.rect.update(self.rectPosX, self.rectPosY, self.jumpLeftRects[self.currentFrame][0], self.jumpLeftRects[self.currentFrame][1])
+                self.offsetX = self.jumpLeftOffset[self.currentFrame]['x']
+                self.offsetY = self.jumpLeftOffset[self.currentFrame]['y']
 
+        elif (self.state == 'jumping right'):
+            #para el salto se hace cada 100 milisegundos para una actualización
+            #más fluida para el movimiento de salto
+            if ((currentTime - self.lastFrame) > 150):
+                self.lastFrame = currentTime
+                self.currentFrame = ((self.currentFrame+1)%len(self.jumpRightFrames))
+                self.currentImage = self.jumpRightFrames[self.currentFrame]
+                self.rect.update(self.rectPosX, self.rectPosY, self.jumpRightRects[self.currentFrame][0], self.jumpRightRects[self.currentFrame][1])
+                self.offsetX = self.jumpRightOffset[self.currentFrame]['x']
+                self.offsetY = self.jumpRightOffset[self.currentFrame]['y']
+               
         else:
             #en este caso se identifica cada 100 milisegundos pues requiere de una actualización
             #más fluida para el movimiento caminando
@@ -284,9 +300,15 @@ class Player(pygame.sprite.Sprite):
                            jumpSpritesRobot.spriteDimensions("jump/Jump_20.png")]
         jumpFramesRect = np.array(jumpFramesRect, dtype=object)
 
-        self.jumpFrames = jumpFramesRect[:, 0]
-        self.jumpRects  = jumpFramesRect[:, 1]
-        self.jumpOffset = jumpFramesRect[:, 2]
+        self.jumpLeftFrames = jumpFramesRect[:, 0]
+        self.jumpLeftRects  = jumpFramesRect[:, 1]
+        self.jumpLeftOffset = jumpFramesRect[:, 2]
+
+        self.jumpRightFrames = []
+        self.jumpRightRects  = jumpFramesRect[:, 1]
+        self.jumpRightOffset  = jumpFramesRect[:, 2]
+        for frame in self.jumpLeftFrames:
+            self.jumpRightFrames.append(pygame.transform.flip(frame, True, False))
 
 
 robotPlayer = Player()#Creación del personaje
@@ -307,6 +329,10 @@ while playing:
     #------ Actualización y dibujo de sprites ---------------------------------------------------
     robotPlayer.moving()
     robotPlayer.draw(screen)
+
+    #------ Inicialización del salto, para evitar vuelo con tecla sostenida ---------------------
+
+    robotPlayer.UP_KEY = False 
 
     #------ Manejo de eventos  ------------------------------------------------------------------
     #------ pygame.event.get() obtendrá todos los eventos y los eliminará de la cola ------------
