@@ -124,16 +124,26 @@ class Player(pygame.sprite.Sprite):
         self.velocity = 0
 
         if self.UP_KEY:
-            self.velocity_y = -11
+            self.rectPosY = 348    # permite cumplir pasar la condición y darle aplicarle gravedad en y 
+            self.velocity_y = -20
         if self.LEFT_KEY:
             self.velocity = -2
         elif self.RIGHT_KEY:
             self.velocity = 2
         self.rectPosX += self.velocity
 
-        # GRAVEDAD
-        self.velocity_y += GRAVEDAD
+        # GRAVEDAD y control de movimiento vertical
+      
+                                        # condición que limita el movimiento y la aplicación de gravedad
+        if (self.rectPosY >= 350):      # de esta forma no cae infinitiamente y la gravedad solo aplica al saltar
+            self.velocity_y = 0
+            self.rectPosY = 350
+        elif (self.rectPosY < 350) :
+            self.velocity_y += GRAVEDAD
+
         self.rectPosY += self.velocity_y
+
+        
 
         self.setState()
         self.animate()
