@@ -17,25 +17,25 @@
 #------------------------------------------------------------------------------------------------
 #-- 1. Librerías --------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
-import pygame  #Conjunto de modulos de python diseñado para el desarrollo de videojuegos
-import json    #Modulo de python para el manejo de datos de formato JSON
-import numpy as np
+import pygame      #Conjunto de modulos de python diseñado para el desarrollo de videojuegos
+import json        #Modulo de python para el manejo de datos de formato JSON
+import numpy as np #Librería fundamental para la computación científica en Python
 
 #------------------------------------------------------------------------------------------------
 #-- 2. Inicialización ---------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
-pygame.init()#Inicialización de pygame
+pygame.init()               #Inicialización de pygame
 clock = pygame.time.Clock() #inicialización del reloj, util para las animaciones y actualización
 
-#---- Se definen las variables del juego --------------------------------------------------------
-GRAVEDAD = 1
+
 
 #---- Se define las dimensiones de la ventana principal del juego -------------------------------
 SCREEN_WIDTH = 1024  #ancho
 SCREEN_HEIGHT = 1024 #alto
 
-#---- Se definen como constante colores utiles --------------------------------------------------
-WHITE = (255, 255, 255)
+#---- Se definen las variables CONSTANTES del juego ---------------------------------------------
+GRAVEDAD = 1            #Constante que simula la gravedad para el movimiento fisico
+WHITE = (255, 255, 255) #Constante de color
 
 #---- Se crea la ventana principal del juego ----------------------------------------------------
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))#creación de la ventana pygame
@@ -95,6 +95,7 @@ class Player(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)#constructor de la clase padre
         self.LEFT_KEY, self.RIGHT_KEY, self.FACING_LEFT, self.UP_KEY = False, False, False, False
         self.loadFrames()                  #se cargan las diferentes images que serán los sprites
+        
         #se inicializan las variables que se utilizan en el personaje
         self.rectPosX = 255
         self.rectPosY = 350
@@ -120,7 +121,7 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.rect(display, WHITE, self.rect, 2)#se dibuja el rectangulo BORRAR PARA ENTREGAR
 
     def moving(self):
-        #SE DEBE MODIFICAR ESTA FUNCIÓN PARA EL MOVIMIENTO VERTICAL
+        #SE DEBE COMENTAR MEJOR
         self.velocity = 0
 
         if self.UP_KEY:
@@ -163,7 +164,7 @@ class Player(pygame.sprite.Sprite):
         
     
     def animate(self):
-        #SE DEBE MODIFICAR ESTA FUNCIÓN PARA la animación del movimiento vertical
+        #SE DEBE COMENTAR MEJOR
         
         currentTime = pygame.time.get_ticks()
         if (self.state == 'idle'):
@@ -231,6 +232,7 @@ class Player(pygame.sprite.Sprite):
                     self.offsetY = self.walkRightOffset[self.currentFrame]['y']
            
     def loadFrames(self):
+        #SE DEBE COMENTAR
         idleSpritesRobot = sprites('./assets/robot/idle/idle.json')
         idleFramesRect = [idleSpritesRobot.spriteDimensions("idle/Idle_01.png"),
                            idleSpritesRobot.spriteDimensions("idle/Idle_02.png"),
@@ -284,9 +286,6 @@ class Player(pygame.sprite.Sprite):
         for frame in self.walkLeftFrames:
             self.walkRightFrames.append(pygame.transform.flip(frame, True, False))
 
-
-        #ESPACIO PARA INTEGRAR LOS SPRITES DEL MOVIEMINTO VERTICAL
-
         jumpSpritesRobot = sprites('./assets/robot/jump/jump.json')
         jumpFramesRect = [jumpSpritesRobot.spriteDimensions("jump/Jump_01.png"),
                            jumpSpritesRobot.spriteDimensions("jump/Jump_02.png"),
@@ -321,7 +320,7 @@ class Player(pygame.sprite.Sprite):
             self.jumpRightFrames.append(pygame.transform.flip(frame, True, False))
 
 
-robotPlayer = Player()#Creación del personaje
+robotPlayer = Player() #Creación del personaje
 
 #------------------------------------------------------------------------------------------------
 #-- 5. Funcionamiento e integración -------------------------------------------------------------
@@ -341,7 +340,6 @@ while playing:
     robotPlayer.draw(screen)
 
     #------ Inicialización del salto, para evitar vuelo con tecla sostenida ---------------------
-
     robotPlayer.UP_KEY = False 
 
     #------ Manejo de eventos  ------------------------------------------------------------------
@@ -351,6 +349,7 @@ while playing:
         if event.type == pygame.QUIT:
             playing = False #Se termina el ciclo para permitir el cierre de la ventana
         
+        #SE DEBE COMENTAR MEJOR LAS SIGUIENTES LINEAS
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
                 robotPlayer.LEFT_KEY, robotPlayer.FACING_LEFT = True,True
