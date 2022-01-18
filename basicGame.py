@@ -31,10 +31,11 @@ clock = pygame.time.Clock() #inicialización del reloj, util para las animacione
 
 #---- Se define las dimensiones de la ventana principal del juego -------------------------------
 SCREEN_WIDTH = 1024  #ancho
-SCREEN_HEIGHT = 1024 #alto
+SCREEN_HEIGHT = 1020 #alto
 
 #---- Se definen las variables CONSTANTES del juego ---------------------------------------------
-GRAVEDAD = 1            #Constante que simula la gravedad para el movimiento fisico
+FPS = 80                #Constante que controla los frames por segundo para actualizar pantalla
+GRAVITY = 1             #Constante que simula la gravedad para el movimiento fisico
 WHITE = (255, 255, 255) #Constante de color
 
 #---- Se crea la ventana principal del juego ----------------------------------------------------
@@ -43,7 +44,7 @@ pygame.display.set_caption('headUpGame')                       #cambio del titul
 
 #---- Se cargan las imagenes y se configura para mantener la posible transparencia de la --------
 #---- imagen png cargada ------------------------------------------------------------------------
-backGroundImage = pygame.image.load('./assets/largeBlueNebula.png').convert_alpha()#Fondo
+backGroundImage = pygame.image.load('./assets/space2.jpg').convert_alpha()#Fondo
 
 
 #------------------------------------------------------------------------------------------------
@@ -103,8 +104,8 @@ class Player(pygame.sprite.Sprite):
         self.rect.center = (self.rectPosX,self.rectPosY)#Se modifica el centro del rectangulo a las coordenadas
         self.currentFrame = 0
         self.lastFrame = 0
-        self.velocity_y = 0
-        self.velocity = 0
+        self.velocityY = 0
+        self.velocityX = 0
         self.state = 'idle'
         self.currentImage = self.idleLeftFrames[0]
         self.offsetX = 0
@@ -121,45 +122,61 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.rect(display, WHITE, self.rect, 2)#se dibuja el rectangulo BORRAR PARA ENTREGAR
 
     def moving(self):
-        #SE DEBE COMENTAR MEJOR
-        self.velocity = 0
+        #SE DEBE COMENTAR MEJOR EL MOVIMIENTO VERTICAL
+        
+        #---- Movimiento vertical -----------------------------------------------------------------
+        if self.UP_KEY:         #Se reconoce cuando se precione la flecha hacia arriba para salto
 
-        if self.UP_KEY:
-            self.rectPosY = 348    # permite cumplir pasar la condición y darle aplicarle gravedad en y 
-            self.velocity_y = -20
-        if self.LEFT_KEY:
-            self.velocity = -2
-        elif self.RIGHT_KEY:
-            self.velocity = 2
-        self.rectPosX += self.velocity
+            #Preguntar a emma porque esta modificando la posicion en Y a un numero fijo
 
+            self.rectPosY = 348 #Permite cumplir pasar la condición y darle aplicarle gravedad en y 
+            self.velocityY = -20
         # GRAVEDAD y control de movimiento vertical
-      
-                                        # condición que limita el movimiento y la aplicación de gravedad
-        if (self.rectPosY >= 350):      # de esta forma no cae infinitiamente y la gravedad solo aplica al saltar
-            self.velocity_y = 0
+        if (self.rectPosY >= 350):#condición que limita el movimiento y la aplicación de gravedad
+            self.velocityY = 0   #de esta forma no cae infinitiamente y la gravedad solo aplica al saltar
             self.rectPosY = 350
         elif (self.rectPosY < 350) :
-            self.velocity_y += GRAVEDAD
-
-        self.rectPosY += self.velocity_y
-
+            self.velocityY += GRAVITY
         
+
+        #---- Movimiento horizontal ---------------------------------------------------------------
+        self.velocityX = 0
+        if self.LEFT_KEY:       #Se reconoce cuando se precione la flecha hacia la izquierda
+            self.velocityX = -4 #El movimiento horizontal se hace en unidades de 2
+        elif self.RIGHT_KEY:    #Se reconoce cuando se precione la flecha hacia la derecha
+            self.velocityX = 4  #El movimiento horizontal se hace en unidades de 2
+        
+
+        #---- Reconocimiento de limites de pantalla -----------------------------------------------
+        #Se reconoce con la posición en x si el rectangulo del personaje se encuentra en el limite
+        #izquierdo o derecho para limitar la posición y obligar al personaje a estar en la pantalla
+        if self.rectPosX + self.velocityX < 0: 
+            self.velocityX = -self.rectPosX 
+        if (self.rectPosX+58) + self.velocityX > SCREEN_WIDTH:
+            self.velocityX = SCREEN_WIDTH - (self.rectPosX+58)
+
+        #---- Actualización del rectangulo --------------------------------------------------------
+        self.rectPosX += self.velocityX #Según la consideración del evento se actualiza la posición
+                                        #del personaje para el eje x
+        self.rectPosY += self.velocityY #Según la consideración del evento se actualiza la posición
+                                        #del personaje para el eje y
 
         self.setState()
         self.animate()
 
     def setState(self):
+        #SE DEBE COMENTAR
         self.state = 'idle'
-        if (self.velocity_y != 0 and self.velocity < 0): 
+
+        if (self.velocityY != 0 and self.velocityX < 0): 
             self.state = 'jumping left'
-        elif (self.velocity_y != 0 and self.velocity > 0):
+        elif (self.velocityY != 0 and self.velocityX > 0):
             self.state = 'jumping right'
-        elif (self.velocity_y != 0 and self.velocity == 0):
+        elif (self.velocityY != 0 and self.velocityX == 0):
             self.state = 'jumping right'
-        elif (self.velocity > 0):
+        elif (self.velocityX > 0):
             self.state = 'moving right'
-        elif (self.velocity < 0):
+        elif (self.velocityX < 0):
             self.state = 'moving left'
         
     
@@ -330,7 +347,7 @@ robotPlayer = Player() #Creación del personaje
 playing = True #Variable de control para el ciclo mencionado
 while playing:
     #------ Actualización del reloj por frame ---------------------------------------------------
-    clock.tick(60) #se realiza cada 60 segundos la actualización en pantalla (para animaciones)
+    clock.tick(FPS) #se realiza cada 60 segundos la actualización en pantalla (para animaciones)
 
     #------ Cambio del fondo de la ventana  -----------------------------------------------------
     screen.blit(backGroundImage, (0,0)) #Cambia los pixeles de la ventana, (recurso, coordenada)
@@ -355,7 +372,7 @@ while playing:
                 robotPlayer.LEFT_KEY, robotPlayer.FACING_LEFT = True,True
             elif event.key == pygame.K_RIGHT:
                 robotPlayer.RIGHT_KEY, robotPlayer.FACING_LEFT = True,False
-            elif event.key == pygame.K_UP:    # se debe reiniciar UP_KEY con False en el ciclo while
+            elif event.key == pygame.K_UP:
                 robotPlayer.UP_KEY = True
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_LEFT:
@@ -364,10 +381,11 @@ while playing:
                 robotPlayer.RIGHT_KEY = False
             elif event.key == pygame.K_UP:
                 robotPlayer.UP_KEY = False
+
     #------ Actualización grafica de la ventana  ------------------------------------------------
     pygame.display.update() #Actualiza la ventana, al pasar parametro actualiza una porción
 
-pygame.quit() #Desinicializa todos los módulos de pygame que han sido previamente inicializados.
+pygame.quit() #Desinicializa todos los módulos de pygame que han sido previamente inicializados
 #------------------------------------------------------------------------------------------------
 #---------------------------  FIN DEL PROGRAMA --------------------------------------------------
 #------------------------------------------------------------------------------------------------
