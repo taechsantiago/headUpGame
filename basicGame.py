@@ -45,7 +45,7 @@ pygame.display.set_caption('headUpGame')                       #cambio del titul
 
 #---- Se cargan las imagenes y se configura para mantener la posible transparencia de la --------
 #---- imagen png cargada ------------------------------------------------------------------------
-backGroundImage = pygame.image.load('./assets/space2.jpg').convert_alpha()#Fondo
+backGroundImage = pygame.image.load('./assets/background/space2.jpg').convert_alpha()#Fondo
 platformImage = pygame.image.load('./assets/platform/Tile.png').convert_alpha()#Plataformas
 
 #------------------------------------------------------------------------------------------------
@@ -128,7 +128,7 @@ class Player(pygame.sprite.Sprite):
         #---- Movimiento vertical -----------------------------------------------------------------
         self.velocityY += GRAVITY
         if self.UP_KEY:          #Se reconoce cuando se precione la flecha hacia arriba para salto
-            self.velocityY = -30
+            self.velocityY = -25
         '''
         if self.UP_KEY:         #Se reconoce cuando se precione la flecha hacia arriba para salto
         #Preguntar a emma porque esta modificando la posicion en Y a un numero fijo
