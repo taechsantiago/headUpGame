@@ -31,11 +31,13 @@ clock = pygame.time.Clock() #inicialización del reloj, util para las animacione
 
 #---- Se define las dimensiones de la ventana principal del juego -------------------------------
 SCREEN_WIDTH = 1024  #ancho
-SCREEN_HEIGHT = 1024 #alto
+SCREEN_HEIGHT = 1020 #alto
 
 #---- Se definen las variables CONSTANTES del juego ---------------------------------------------
-GRAVEDAD = 1            #Constante que simula la gravedad para el movimiento fisico
+FPS = 80                #Constante que controla los frames por segundo para actualizar pantalla
+GRAVITY = 1             #Constante que simula la gravedad para el movimiento fisico
 WHITE = (255, 255, 255) #Constante de color
+PLATFOR_NUMBER = 10     #Constante que permite decidir el número de plataformas en pantalla
 
 #---- Se crea la ventana principal del juego ----------------------------------------------------
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))#creación de la ventana pygame
@@ -43,8 +45,8 @@ pygame.display.set_caption('headUpGame')                       #cambio del titul
 
 #---- Se cargan las imagenes y se configura para mantener la posible transparencia de la --------
 #---- imagen png cargada ------------------------------------------------------------------------
-backGroundImage = pygame.image.load('./assets/largeBlueNebula.png').convert_alpha()#Fondo
-
+backGroundImage = pygame.image.load('./assets/space2.jpg').convert_alpha()#Fondo
+platformImage = pygame.image.load('./assets/platform/Tile.png').convert_alpha()#Plataformas
 
 #------------------------------------------------------------------------------------------------
 #-- 3. Sprites ----------------------------------------------------------------------------------
@@ -103,8 +105,8 @@ class Player(pygame.sprite.Sprite):
         self.rect.center = (self.rectPosX,self.rectPosY)#Se modifica el centro del rectangulo a las coordenadas
         self.currentFrame = 0
         self.lastFrame = 0
-        self.velocity_y = 0
-        self.velocity = 0
+        self.velocityY = 0
+        self.velocityX = 0
         self.state = 'idle'
         self.currentImage = self.idleLeftFrames[0]
         self.offsetX = 0
@@ -121,48 +123,82 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.rect(display, WHITE, self.rect, 2)#se dibuja el rectangulo BORRAR PARA ENTREGAR
 
     def moving(self):
-        #SE DEBE COMENTAR MEJOR
-        self.velocity = 0
-
-        if self.UP_KEY:
-            self.rectPosY = 348    # permite cumplir pasar la condición y darle aplicarle gravedad en y 
-            self.velocity_y = -20
-        if self.LEFT_KEY:
-            self.velocity = -2
-        elif self.RIGHT_KEY:
-            self.velocity = 2
-        self.rectPosX += self.velocity
-
+        #SE DEBE COMENTAR MEJOR EL MOVIMIENTO VERTICAL
+        
+        #---- Movimiento vertical -----------------------------------------------------------------
+        self.velocityY += GRAVITY
+        if self.UP_KEY:          #Se reconoce cuando se precione la flecha hacia arriba para salto
+            self.velocityY = -30
+        '''
+        if self.UP_KEY:         #Se reconoce cuando se precione la flecha hacia arriba para salto
+        #Preguntar a emma porque esta modificando la posicion en Y a un numero fijo
+            self.rectPosY = 348 #Permite cumplir pasar la condición y darle aplicarle gravedad en y 
+            self.velocityY = -20
         # GRAVEDAD y control de movimiento vertical
-      
-                                        # condición que limita el movimiento y la aplicación de gravedad
-        if (self.rectPosY >= 350):      # de esta forma no cae infinitiamente y la gravedad solo aplica al saltar
-            self.velocity_y = 0
+        if (self.rectPosY >= 350):#condición que limita el movimiento y la aplicación de gravedad
+            self.velocityY = 0   #de esta forma no cae infinitiamente y la gravedad solo aplica al saltar
             self.rectPosY = 350
         elif (self.rectPosY < 350) :
-            self.velocity_y += GRAVEDAD
+            self.velocityY += GRAVITY
+        '''
 
-        self.rectPosY += self.velocity_y
+        #---- Movimiento horizontal ---------------------------------------------------------------
+        self.velocityX = 0
+        if self.LEFT_KEY:       #Se reconoce cuando se precione la flecha hacia la izquierda
+            self.velocityX = -4 #El movimiento horizontal se hace en unidades de 2
+        elif self.RIGHT_KEY:    #Se reconoce cuando se precione la flecha hacia la derecha
+            self.velocityX = 4  #El movimiento horizontal se hace en unidades de 2
 
+        #---- Reconocimiento de limites de pantalla ------------------------------------------------       
+        if self.rect.x + self.velocityX < 0: 
+            self.velocityX = -self.rect.x 
+        if (self.rect.x+58) + self.velocityX > SCREEN_WIDTH:
+            self.velocityX = SCREEN_WIDTH - (self.rect.x+58)
         
+        if self.rect.bottom+self.velocityY > SCREEN_HEIGHT:
+            self.velocityY = -20
+
+        #---- Reconocimiento colisión con plataformas ----------------------------------------------
+        for platform_i in platformsGroup: #Se recorren las plataformas para identificar colisión
+            #Se identifica colisión con el uso de rect.colliderect entre la plataforma y un rect
+            #generado a partir del personaje pero desplazado para mejor identificación
+            if platform_i.rect.colliderect(self.rect.x, self.rect.y+self.velocityY, self.rect.width, 
+                                            self.rect.height):
+                #Se identifica la posición inferior del rectangulo del personaje con respecto
+                #al centro del rectangulo de la plataforma 
+                if self.rect.bottom < platform_i.rect.centery:
+                    #Se identifica si la velocidad actual es positiva para determinar caida, no salto
+                    if self.velocityY > 0:
+                        #Se modifica la posición del rectangulo del personaje para que quede justo
+                        #encima del rectangulo de la plataforma
+                        self.rect.bottom = platform_i.rect.top 
+
+                        self.velocityY = 0
+
+        #---- Actualización del rectangulo --------------------------------------------------------      
+        self.rect.x += self.velocityX #Según la consideración del evento se actualiza la posición
+                                      #del personaje para el eje x
+        self.rect.y += self.velocityY #Según la consideración del evento se actualiza la posición
+                                      #del personaje para el eje y
 
         self.setState()
         self.animate()
 
     def setState(self):
+        #SE DEBE COMENTAR
         self.state = 'idle'
-        if (self.velocity_y != 0 and self.velocity < 0): 
+
+        if (self.velocityY != 0 and self.velocityX < 0): 
             self.state = 'jumping left'
-        elif (self.velocity_y != 0 and self.velocity > 0):
+        elif (self.velocityY != 0 and self.velocityX > 0):
             self.state = 'jumping right'
-        elif (self.velocity_y != 0 and self.velocity == 0):
+        elif (self.velocityY != 0 and self.velocityX == 0):
             self.state = 'jumping right'
-        elif (self.velocity > 0):
+        elif (self.velocityX > 0):
             self.state = 'moving right'
-        elif (self.velocity < 0):
+        elif (self.velocityX < 0):
             self.state = 'moving left'
-        
-    
+            
     def animate(self):
         #SE DEBE COMENTAR MEJOR
         
@@ -178,14 +214,14 @@ class Player(pygame.sprite.Sprite):
                 if self.FACING_LEFT:
                     self.currentImage = self.idleLeftFrames[self.currentFrame]
                     
-                    self.rect.update(self.rectPosX, self.rectPosY, self.idleLeftRects[self.currentFrame][0], self.idleLeftRects[self.currentFrame][1])
+                    self.rect.update(self.rect.x, self.rect.y, self.idleLeftRects[self.currentFrame][0], self.idleLeftRects[self.currentFrame][1])
                     self.offsetX = self.idleLeftOffset[self.currentFrame]['x']
                     self.offsetY = self.idleLeftOffset[self.currentFrame]['y']
 
                 elif not self.FACING_LEFT:
                     self.currentImage = self.idleRightFrames[self.currentFrame]
                     
-                    self.rect.update(self.rectPosX, self.rectPosY, self.idleRightRects[self.currentFrame][0], self.idleRightRects[self.currentFrame][1])                    
+                    self.rect.update(self.rect.x, self.rect.y, self.idleRightRects[self.currentFrame][0], self.idleRightRects[self.currentFrame][1])                    
                     self.offsetX = self.idleRightOffset[self.currentFrame]['x']
                     self.offsetY = self.idleRightOffset[self.currentFrame]['y']
 
@@ -196,7 +232,7 @@ class Player(pygame.sprite.Sprite):
                 self.lastFrame = currentTime
                 self.currentFrame = ((self.currentFrame+1)%len(self.jumpLeftFrames))
                 self.currentImage = self.jumpLeftFrames[self.currentFrame]
-                self.rect.update(self.rectPosX, self.rectPosY, self.jumpLeftRects[self.currentFrame][0], self.jumpLeftRects[self.currentFrame][1])
+                self.rect.update(self.rect.x, self.rect.y, self.jumpLeftRects[self.currentFrame][0], self.jumpLeftRects[self.currentFrame][1])
                 self.offsetX = self.jumpLeftOffset[self.currentFrame]['x']
                 self.offsetY = self.jumpLeftOffset[self.currentFrame]['y']
 
@@ -207,7 +243,7 @@ class Player(pygame.sprite.Sprite):
                 self.lastFrame = currentTime
                 self.currentFrame = ((self.currentFrame+1)%len(self.jumpRightFrames))
                 self.currentImage = self.jumpRightFrames[self.currentFrame]
-                self.rect.update(self.rectPosX, self.rectPosY, self.jumpRightRects[self.currentFrame][0], self.jumpRightRects[self.currentFrame][1])
+                self.rect.update(self.rect.x, self.rect.y, self.jumpRightRects[self.currentFrame][0], self.jumpRightRects[self.currentFrame][1])
                 self.offsetX = self.jumpRightOffset[self.currentFrame]['x']
                 self.offsetY = self.jumpRightOffset[self.currentFrame]['y']
                
@@ -220,14 +256,14 @@ class Player(pygame.sprite.Sprite):
                 if self.state == 'moving left':
                     self.currentImage = self.walkLeftFrames[self.currentFrame]
 
-                    self.rect.update(self.rectPosX, self.rectPosY, self.walkLeftRects[self.currentFrame][0], self.walkLeftRects[self.currentFrame][1])
+                    self.rect.update(self.rect.x, self.rect.y, self.walkLeftRects[self.currentFrame][0], self.walkLeftRects[self.currentFrame][1])
                     self.offsetX = self.walkLeftOffset[self.currentFrame]['x']
                     self.offsetY = self.walkLeftOffset[self.currentFrame]['y']
 
                 elif self.state == 'moving right':
                     self.currentImage = self.walkRightFrames[self.currentFrame]
 
-                    self.rect.update(self.rectPosX, self.rectPosY, self.walkRightRects[self.currentFrame][0], self.walkRightRects[self.currentFrame][1])
+                    self.rect.update(self.rect.x, self.rect.y, self.walkRightRects[self.currentFrame][0], self.walkRightRects[self.currentFrame][1])
                     self.offsetX = self.walkRightOffset[self.currentFrame]['x']
                     self.offsetY = self.walkRightOffset[self.currentFrame]['y']
            
@@ -319,8 +355,39 @@ class Player(pygame.sprite.Sprite):
         for frame in self.jumpLeftFrames:
             self.jumpRightFrames.append(pygame.transform.flip(frame, True, False))
 
+class Platform(pygame.sprite.Sprite): 
+    #Se hace uso de pygame.sprite.Sprite que facilita tanto las colisiones como el movimiento y
+    #el manejo de sprites (cambios y transiciones). para este caso se puede usar los grupos de 
+    #pygame que optimizan la utilización recursiva de la clase
+
+    #---- Inicialización de la plataforma -------------------------------------------------------
+    def __init__(self, x, y, width): 
+        pygame.sprite.Sprite.__init__(self) #constructor de la clase padre
+
+        #se carga la imagen que se utiliza para la plataforma, con longitud variable
+        self.image = pygame.transform.scale(platformImage, (width, 30)) 
+        self.rect = self.image.get_rect() #se obtiene el rectangulo para la imagen correspondiente
+
+        #Inicialización de coordenadas xy para la plataforma
+        self.rect.x = x
+        self.rect.y = y
+
 
 robotPlayer = Player() #Creación del personaje
+
+#Creación de plataformas
+platformsGroup = pygame.sprite.Group() #Instancia del uso de pygame groups
+for i in range(PLATFOR_NUMBER):        #Se crean tantas plataformas como PLATFOR_NUMBER declarado
+    
+    #Se genera aleatoriamente el ancho y las coordenadas
+    platformWidth = np.random.randint(100,200)
+    platformX = np.random.randint(0, SCREEN_WIDTH-platformWidth) #Se debe limitar con el ancho
+    platformY = i*np.random.randint(80,120)
+
+    platformI = Platform(platformX, platformY, platformWidth) #Se crea una plataforma
+    platformsGroup.add(platformI) #Se agrega la plataforma creada al grupo de plataformas
+
+
 
 #------------------------------------------------------------------------------------------------
 #-- 5. Funcionamiento e integración -------------------------------------------------------------
@@ -330,12 +397,13 @@ robotPlayer = Player() #Creación del personaje
 playing = True #Variable de control para el ciclo mencionado
 while playing:
     #------ Actualización del reloj por frame ---------------------------------------------------
-    clock.tick(60) #se realiza cada 60 segundos la actualización en pantalla (para animaciones)
+    clock.tick(FPS) #se realiza cada 60 segundos la actualización en pantalla (para animaciones)
 
     #------ Cambio del fondo de la ventana  -----------------------------------------------------
     screen.blit(backGroundImage, (0,0)) #Cambia los pixeles de la ventana, (recurso, coordenada)
 
     #------ Actualización y dibujo de sprites ---------------------------------------------------
+    platformsGroup.draw(screen)
     robotPlayer.moving()
     robotPlayer.draw(screen)
 
@@ -355,7 +423,7 @@ while playing:
                 robotPlayer.LEFT_KEY, robotPlayer.FACING_LEFT = True,True
             elif event.key == pygame.K_RIGHT:
                 robotPlayer.RIGHT_KEY, robotPlayer.FACING_LEFT = True,False
-            elif event.key == pygame.K_UP:    # se debe reiniciar UP_KEY con False en el ciclo while
+            elif event.key == pygame.K_UP:
                 robotPlayer.UP_KEY = True
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_LEFT:
@@ -364,10 +432,11 @@ while playing:
                 robotPlayer.RIGHT_KEY = False
             elif event.key == pygame.K_UP:
                 robotPlayer.UP_KEY = False
+
     #------ Actualización grafica de la ventana  ------------------------------------------------
     pygame.display.update() #Actualiza la ventana, al pasar parametro actualiza una porción
 
-pygame.quit() #Desinicializa todos los módulos de pygame que han sido previamente inicializados.
+pygame.quit() #Desinicializa todos los módulos de pygame que han sido previamente inicializados
 #------------------------------------------------------------------------------------------------
 #---------------------------  FIN DEL PROGRAMA --------------------------------------------------
 #------------------------------------------------------------------------------------------------
