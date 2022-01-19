@@ -17,6 +17,7 @@
 #------------------------------------------------------------------------------------------------
 #-- 1. Librerías --------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
+from wsgiref.util import request_uri
 import pygame      #Conjunto de modulos de python diseñado para el desarrollo de videojuegos
 import json        #Modulo de python para el manejo de datos de formato JSON
 import numpy as np #Librería fundamental para la computación científica en Python
@@ -27,8 +28,6 @@ import numpy as np #Librería fundamental para la computación científica en Py
 pygame.init()               #Inicialización de pygame
 clock = pygame.time.Clock() #inicialización del reloj, util para las animaciones y actualización
 
-
-
 #---- Se define las dimensiones de la ventana principal del juego -------------------------------
 SCREEN_WIDTH = 1024  #ancho
 SCREEN_HEIGHT = 1020 #alto
@@ -38,6 +37,8 @@ FPS = 80                #Constante que controla los frames por segundo para actu
 GRAVITY = 1             #Constante que simula la gravedad para el movimiento fisico
 WHITE = (255, 255, 255) #Constante de color
 PLATFOR_NUMBER = 10     #Constante que permite decidir el número de plataformas en pantalla
+SCROLLING_LIMIT = 300   #Constante para determinar cuando se activa el desplazamiento de pantalla
+Scrolling = 0           #No es una constante, varia con el pasar del juego, desplaza plataformas
 
 #---- Se crea la ventana principal del juego ----------------------------------------------------
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))#creación de la ventana pygame
@@ -175,14 +176,26 @@ class Player(pygame.sprite.Sprite):
 
                         self.velocityY = 0
 
-        #---- Actualización del rectangulo --------------------------------------------------------      
+        #---- Reconocimiento para activar desplazamiento --------------------------------------------
+        Scrolling = 0
+        if self.rect.top <= SCROLLING_LIMIT:
+            #se reconoce si el personaje esta saltando para un desplazamiento progresivo
+            if self.velocityY < 0:          
+                Scrolling = -self.velocityY #es el contrario del salto o caida del personaje
+
+
+        #---- Actualización del rectangulo ----------------------------------------------------------      
         self.rect.x += self.velocityX #Según la consideración del evento se actualiza la posición
                                       #del personaje para el eje x
-        self.rect.y += self.velocityY #Según la consideración del evento se actualiza la posición
-                                      #del personaje para el eje y
+        self.rect.y += self.velocityY + Scrolling #Según la consideración del evento se actualiza la 
+                                                  #posición del personaje para el eje y sin permitir
+                                                  #que el personaje sobrepase el limite de scroll
+                                                  #al estar en la ultima plataforma
 
         self.setState()
         self.animate()
+
+        return Scrolling
 
     def setState(self):
         #SE DEBE COMENTAR
@@ -355,6 +368,10 @@ class Player(pygame.sprite.Sprite):
         for frame in self.jumpLeftFrames:
             self.jumpRightFrames.append(pygame.transform.flip(frame, True, False))
 
+
+#------------------------------------------------------------------------------------------------
+#-- 5. Plataformas ------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------
 class Platform(pygame.sprite.Sprite): 
     #Se hace uso de pygame.sprite.Sprite que facilita tanto las colisiones como el movimiento y
     #el manejo de sprites (cambios y transiciones). para este caso se puede usar los grupos de 
@@ -372,7 +389,12 @@ class Platform(pygame.sprite.Sprite):
         self.rect.x = x
         self.rect.y = y
 
+    def update(self, Scrolling):
+        self.rect.y += Scrolling #El movimiento de las plataformas es vertical 
 
+#------------------------------------------------------------------------------------------------
+#-- 6. Instancias -------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------
 robotPlayer = Player() #Creación del personaje
 
 #Creación de plataformas
@@ -381,7 +403,7 @@ for i in range(PLATFOR_NUMBER):        #Se crean tantas plataformas como PLATFOR
     
     #Se genera aleatoriamente el ancho y las coordenadas
     platformWidth = np.random.randint(100,200)
-    platformX = np.random.randint(0, SCREEN_WIDTH-platformWidth) #Se debe limitar con el ancho
+    platformX = np.random.randint(100, SCREEN_WIDTH-300) #Se debe limitar con el ancho
     platformY = i*np.random.randint(80,120)
 
     platformI = Platform(platformX, platformY, platformWidth) #Se crea una plataforma
@@ -390,7 +412,7 @@ for i in range(PLATFOR_NUMBER):        #Se crean tantas plataformas como PLATFOR
 
 
 #------------------------------------------------------------------------------------------------
-#-- 5. Funcionamiento e integración -------------------------------------------------------------
+#-- 8. Funcionamiento e integración -------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
 
 #---- Se define el ciclo con el cual se evita el cierre de la ventana principal creada ----------
@@ -399,13 +421,18 @@ while playing:
     #------ Actualización del reloj por frame ---------------------------------------------------
     clock.tick(FPS) #se realiza cada 60 segundos la actualización en pantalla (para animaciones)
 
-    #------ Cambio del fondo de la ventana  -----------------------------------------------------
-    screen.blit(backGroundImage, (0,0)) #Cambia los pixeles de la ventana, (recurso, coordenada)
+    #------ Cambio del fondo de la ventana con desplazamiento -----------------------------------
+    screen.blit(backGroundImage, (0,0))
+
+    #------ Dibujo del umbral temporal para iniciar desplazamiento  -----------------------------
+    pygame.draw.line(screen, WHITE, (0, SCROLLING_LIMIT), (SCREEN_WIDTH, SCROLLING_LIMIT))
 
     #------ Actualización y dibujo de sprites ---------------------------------------------------
-    platformsGroup.draw(screen)
-    robotPlayer.moving()
+    Scrolling = robotPlayer.moving()
     robotPlayer.draw(screen)
+
+    platformsGroup.update(Scrolling)
+    platformsGroup.draw(screen)
 
     #------ Inicialización del salto, para evitar vuelo con tecla sostenida ---------------------
     robotPlayer.UP_KEY = False 
