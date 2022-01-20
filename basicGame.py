@@ -112,6 +112,7 @@ class Player(pygame.sprite.Sprite):
         self.currentImage = self.idleLeftFrames[0]
         self.offsetX = 0
         self.offsetY = 0
+        self.UnlockJump = True #Variable que habilita el salto del perosnaje
 
     def draw(self, display):
         #---- Actualización del personaje en la pantalla ------------------------------------------
@@ -127,22 +128,10 @@ class Player(pygame.sprite.Sprite):
         #SE DEBE COMENTAR MEJOR EL MOVIMIENTO VERTICAL
         
         #---- Movimiento vertical -----------------------------------------------------------------
-        self.velocityY += GRAVITY
-        if self.UP_KEY:          #Se reconoce cuando se precione la flecha hacia arriba para salto
-            self.velocityY = -25
-        '''
-        if self.UP_KEY:         #Se reconoce cuando se precione la flecha hacia arriba para salto
-        #Preguntar a emma porque esta modificando la posicion en Y a un numero fijo
-            self.rectPosY = 348 #Permite cumplir pasar la condición y darle aplicarle gravedad en y 
-            self.velocityY = -20
-        # GRAVEDAD y control de movimiento vertical
-        if (self.rectPosY >= 350):#condición que limita el movimiento y la aplicación de gravedad
-            self.velocityY = 0   #de esta forma no cae infinitiamente y la gravedad solo aplica al saltar
-            self.rectPosY = 350
-        elif (self.rectPosY < 350) :
-            self.velocityY += GRAVITY
-        '''
-
+        self.velocityY += GRAVITY #Aplica gravedad restando en cada iteración el valor almacenado en GRAVITY
+        if self.UP_KEY:           #Se reconoce cuando se precione la flecha hacia arriba para salto
+            self.velocityY = -25  #Valor asociado a la fuerza del salto del personaje
+       
         #---- Movimiento horizontal ---------------------------------------------------------------
         self.velocityX = 0
         if self.LEFT_KEY:       #Se reconoce cuando se precione la flecha hacia la izquierda
@@ -173,7 +162,7 @@ class Player(pygame.sprite.Sprite):
                         #Se modifica la posición del rectangulo del personaje para que quede justo
                         #encima del rectangulo de la plataforma
                         self.rect.bottom = platform_i.rect.top 
-
+                        self.UnlockJump = True #Permite saltar luego de estar sobre una plataforma
                         self.velocityY = 0
 
         #---- Reconocimiento para activar desplazamiento --------------------------------------------
@@ -198,18 +187,18 @@ class Player(pygame.sprite.Sprite):
         return Scrolling
 
     def setState(self):
-        #SE DEBE COMENTAR
-        self.state = 'idle'
+        
+        self.state = 'idle' #Estado predeterminado del personaje para la asignación de la animación
 
-        if (self.velocityY != 0 and self.velocityX < 0): 
+        if (self.velocityY != 0 and self.velocityX < 0):    #Animación de salto a la izquierda
             self.state = 'jumping left'
-        elif (self.velocityY != 0 and self.velocityX > 0):
+        elif (self.velocityY != 0 and self.velocityX > 0):  #Animación de salto a la derecha
             self.state = 'jumping right'
-        elif (self.velocityY != 0 and self.velocityX == 0):
+        elif (self.velocityY != 0 and self.velocityX == 0): #Animación de salto a la derecha en caida del personaje
             self.state = 'jumping right'
-        elif (self.velocityX > 0):
+        elif (self.velocityX > 0):      #Animación de movimiento a la derecha
             self.state = 'moving right'
-        elif (self.velocityX < 0):
+        elif (self.velocityX < 0):      #Animación de movimiento a la izquierda
             self.state = 'moving left'
             
     def animate(self):
@@ -444,20 +433,20 @@ while playing:
         if event.type == pygame.QUIT:
             playing = False #Se termina el ciclo para permitir el cierre de la ventana
         
-        #SE DEBE COMENTAR MEJOR LAS SIGUIENTES LINEAS
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
+            if event.key == pygame.K_LEFT:      #activación de movimiento hacia la izquierda al presionar tecla 'izquierda'
                 robotPlayer.LEFT_KEY, robotPlayer.FACING_LEFT = True,True
-            elif event.key == pygame.K_RIGHT:
+            elif event.key == pygame.K_RIGHT:    #activación de movimiento hacia la derecha al presionar tecla 'derecha'
                 robotPlayer.RIGHT_KEY, robotPlayer.FACING_LEFT = True,False
-            elif event.key == pygame.K_UP:
-                robotPlayer.UP_KEY = True
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_LEFT:
+            elif event.key == pygame.K_UP and robotPlayer.UnlockJump == True: #Solo salta cuando la variable UnlockJump está en True
+                robotPlayer.UP_KEY = True        #Luego de saltar se deshabilita el salto hasta una nueva colisión con una                           
+                robotPlayer.UnlockJump = False   #plataforma esto evita el doble salto del personaje
+        if event.type == pygame.KEYUP:          
+            if event.key == pygame.K_LEFT:       #desactiva el movimiento hacia la izquierda al soltar la tecla 'izquierda'
                 robotPlayer.LEFT_KEY = False
-            elif event.key == pygame.K_RIGHT:
+            elif event.key == pygame.K_RIGHT:    #desactiva el movimiento hacia la derecha al soltar la tecla 'derecha'
                 robotPlayer.RIGHT_KEY = False
-            elif event.key == pygame.K_UP:
+            elif event.key == pygame.K_UP:       #desactiva el movimiento de salto al soltar la tecla de 'arriba'
                 robotPlayer.UP_KEY = False
 
     #------ Actualización grafica de la ventana  ------------------------------------------------
