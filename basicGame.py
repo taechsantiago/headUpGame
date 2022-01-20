@@ -111,6 +111,7 @@ class Player(pygame.sprite.Sprite):
         self.currentImage = self.idleLeftFrames[0]
         self.offsetX = 0
         self.offsetY = 0
+        self.UnlockJump = True #Variable que habilita el salto del perosnaje
 
     def draw(self, display):
         #---- Actualización del personaje en la pantalla ------------------------------------------
@@ -172,7 +173,7 @@ class Player(pygame.sprite.Sprite):
                         #Se modifica la posición del rectangulo del personaje para que quede justo
                         #encima del rectangulo de la plataforma
                         self.rect.bottom = platform_i.rect.top 
-
+                        self.UnlockJump = True #Permite saltar luego de estar sobre una plataforma
                         self.velocityY = 0
 
         #---- Actualización del rectangulo --------------------------------------------------------      
@@ -423,9 +424,10 @@ while playing:
                 robotPlayer.LEFT_KEY, robotPlayer.FACING_LEFT = True,True
             elif event.key == pygame.K_RIGHT:
                 robotPlayer.RIGHT_KEY, robotPlayer.FACING_LEFT = True,False
-            elif event.key == pygame.K_UP:
-                robotPlayer.UP_KEY = True
-        if event.type == pygame.KEYUP:
+            elif event.key == pygame.K_UP and robotPlayer.UnlockJump == True:  #Solo salta cuando la variable 
+                robotPlayer.UP_KEY = True                                      #UnlockJump está en True
+                robotPlayer.UnlockJump = False #Luego de saltar se deshabilita el salto hasta una nueva colisión con una
+        if event.type == pygame.KEYUP:         #plataforma esto evita el doble salto del personaje
             if event.key == pygame.K_LEFT:
                 robotPlayer.LEFT_KEY = False
             elif event.key == pygame.K_RIGHT:
