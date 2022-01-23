@@ -1,9 +1,10 @@
- #------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------
 #------- Videojuego headUP ----------------------------------------------------------------------
 #------- Por: Santiago Taborda E   santiago.tabordae@udea.edu.co --------------------------------
 #-------      Estudiante de Ingeniería de Telecomunicaciones  -----------------------------------
 #-------      CC 1000393907, Wpp 3108983553 -----------------------------------------------------
-#--------                                      --------------------------------------------------
+#------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------
 #-------      Emmanuel Arango A    emmanuel.arango@udea.edu.co  ---------------------------------
 #-------      Estidiante de Ingeniería de Telecomunicaciones ------------------------------------
 #-------      CC 1017214646, Wpp 3122859327 -----------------------------------------------------
@@ -17,9 +18,13 @@
 #------------------------------------------------------------------------------------------------
 #-- 1. Librerías --------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
+from pickle import FALSE
+from platform import platform
+from wsgiref.util import request_uri
 import pygame      #Conjunto de modulos de python diseñado para el desarrollo de videojuegos
 import json        #Modulo de python para el manejo de datos de formato JSON
 import numpy as np #Librería fundamental para la computación científica en Python
+from scipy.spatial import distance #Función de la biblioteca scipy para el calculo de distancia 
 
 #------------------------------------------------------------------------------------------------
 #-- 2. Inicialización ---------------------------------------------------------------------------
@@ -27,17 +32,25 @@ import numpy as np #Librería fundamental para la computación científica en Py
 pygame.init()               #Inicialización de pygame
 clock = pygame.time.Clock() #inicialización del reloj, util para las animaciones y actualización
 
-
-
 #---- Se define las dimensiones de la ventana principal del juego -------------------------------
 SCREEN_WIDTH = 1024  #ancho
-SCREEN_HEIGHT = 1020 #alto
+SCREEN_HEIGHT = 1000 #alto
 
-#---- Se definen las variables CONSTANTES del juego ---------------------------------------------
+#---- Se definen las VARIABLES Y CONSTANTES del juego --------------------------------------------
 FPS = 80                #Constante que controla los frames por segundo para actualizar pantalla
 GRAVITY = 1             #Constante que simula la gravedad para el movimiento fisico
 WHITE = (255, 255, 255) #Constante de color
+BLACK = (0, 0, 0)       #Constante de color
 PLATFOR_NUMBER = 10     #Constante que permite decidir el número de plataformas en pantalla
+SCROLLING_LIMIT = 300   #Constante para determinar cuando se activa el desplazamiento de pantalla
+GAME_OVER = False       #Constante que permite determinar el fin de la partida
+FONT_SMALL = pygame.font.SysFont('Lucida Sans',20, bold=True) #Constante de letra tamaño pequeño
+FONT_BIG = pygame.font.SysFont('Lucida Sans',24, bold=True)   #Constante de letra tamaño grande
+Scrolling = 0           #No es una constante, desplaza las plataformas
+Scrolling_PlfPosy = []  #No es una constante, permite evitar que las plataformas se generen con
+                        #una misma coordenada de acuerdo al eje Y
+Score = 0               #No es una constante, permite llevar cuenta del puntaje alcanzado
+Fade_background = 0     #No es una constante, permite la visualización correcta del game over
 
 #---- Se crea la ventana principal del juego ----------------------------------------------------
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))#creación de la ventana pygame
@@ -45,8 +58,13 @@ pygame.display.set_caption('headUpGame')                       #cambio del titul
 
 #---- Se cargan las imagenes y se configura para mantener la posible transparencia de la --------
 #---- imagen png cargada ------------------------------------------------------------------------
-backGroundImage = pygame.image.load('./assets/space2.jpg').convert_alpha()#Fondo
+backGroundImage = pygame.image.load('./assets/background/space2.jpg').convert_alpha()#Fondo
 platformImage = pygame.image.load('./assets/platform/Tile.png').convert_alpha()#Plataformas
+
+#---- Función para los letreros en pantalla -----------------------------------------------------
+def screenDrawText(stringText, fontText, colorText, posXText, posYText):
+    imageText = fontText.render(stringText, True, colorText)
+    screen.blit(imageText, (posXText, posYText))
 
 #------------------------------------------------------------------------------------------------
 #-- 3. Sprites ----------------------------------------------------------------------------------
@@ -99,8 +117,8 @@ class Player(pygame.sprite.Sprite):
         self.loadFrames()                  #se cargan las diferentes images que serán los sprites
         
         #se inicializan las variables que se utilizan en el personaje
-        self.rectPosX = 255
-        self.rectPosY = 350
+        self.rectPosX = (SCREEN_WIDTH-10)//2#Coordenadas iniciales de acuerdo plataforma inicial
+        self.rectPosY = SCREEN_HEIGHT-200   #Coordenadas iniciales de acuerdo plataforma inicial
         self.rect = pygame.Rect(self.rectPosX, self.rectPosY, self.idleLeftRects[0][0], self.idleLeftRects[0][1])
         self.rect.center = (self.rectPosX,self.rectPosY)#Se modifica el centro del rectangulo a las coordenadas
         self.currentFrame = 0
@@ -111,6 +129,7 @@ class Player(pygame.sprite.Sprite):
         self.currentImage = self.idleLeftFrames[0]
         self.offsetX = 0
         self.offsetY = 0
+        self.UnlockJump = True #Variable que habilita el salto del perosnaje
 
     def draw(self, display):
         #---- Actualización del personaje en la pantalla ------------------------------------------
@@ -126,22 +145,10 @@ class Player(pygame.sprite.Sprite):
         #SE DEBE COMENTAR MEJOR EL MOVIMIENTO VERTICAL
         
         #---- Movimiento vertical -----------------------------------------------------------------
-        self.velocityY += GRAVITY
-        if self.UP_KEY:          #Se reconoce cuando se precione la flecha hacia arriba para salto
-            self.velocityY = -30
-        '''
-        if self.UP_KEY:         #Se reconoce cuando se precione la flecha hacia arriba para salto
-        #Preguntar a emma porque esta modificando la posicion en Y a un numero fijo
-            self.rectPosY = 348 #Permite cumplir pasar la condición y darle aplicarle gravedad en y 
-            self.velocityY = -20
-        # GRAVEDAD y control de movimiento vertical
-        if (self.rectPosY >= 350):#condición que limita el movimiento y la aplicación de gravedad
-            self.velocityY = 0   #de esta forma no cae infinitiamente y la gravedad solo aplica al saltar
-            self.rectPosY = 350
-        elif (self.rectPosY < 350) :
-            self.velocityY += GRAVITY
-        '''
-
+        self.velocityY += GRAVITY #Aplica gravedad restando en cada iteración el valor almacenado en GRAVITY
+        if self.UP_KEY:           #Se reconoce cuando se precione la flecha hacia arriba para salto
+            self.velocityY = -25  #Valor asociado a la fuerza del salto del personaje
+       
         #---- Movimiento horizontal ---------------------------------------------------------------
         self.velocityX = 0
         if self.LEFT_KEY:       #Se reconoce cuando se precione la flecha hacia la izquierda
@@ -155,8 +162,8 @@ class Player(pygame.sprite.Sprite):
         if (self.rect.x+58) + self.velocityX > SCREEN_WIDTH:
             self.velocityX = SCREEN_WIDTH - (self.rect.x+58)
         
-        if self.rect.bottom+self.velocityY > SCREEN_HEIGHT:
-            self.velocityY = -20
+        #if self.rect.bottom+self.velocityY > SCREEN_HEIGHT:
+        #    self.velocityY = -20
 
         #---- Reconocimiento colisión con plataformas ----------------------------------------------
         for platform_i in platformsGroup: #Se recorren las plataformas para identificar colisión
@@ -172,31 +179,43 @@ class Player(pygame.sprite.Sprite):
                         #Se modifica la posición del rectangulo del personaje para que quede justo
                         #encima del rectangulo de la plataforma
                         self.rect.bottom = platform_i.rect.top 
-
+                        self.UnlockJump = True #Permite saltar luego de estar sobre una plataforma
                         self.velocityY = 0
 
-        #---- Actualización del rectangulo --------------------------------------------------------      
+        #---- Reconocimiento para activar desplazamiento --------------------------------------------
+        Scrolling = 0
+        if self.rect.top <= SCROLLING_LIMIT:
+            #se reconoce si el personaje esta saltando para un desplazamiento progresivo
+            if self.velocityY < 0:          
+                Scrolling = -self.velocityY #es el contrario del salto o caida del personaje
+
+
+        #---- Actualización del rectangulo ----------------------------------------------------------      
         self.rect.x += self.velocityX #Según la consideración del evento se actualiza la posición
                                       #del personaje para el eje x
-        self.rect.y += self.velocityY #Según la consideración del evento se actualiza la posición
-                                      #del personaje para el eje y
+        self.rect.y += self.velocityY + Scrolling #Según la consideración del evento se actualiza la 
+                                                  #posición del personaje para el eje y sin permitir
+                                                  #que el personaje sobrepase el limite de scroll
+                                                  #al estar en la ultima plataforma
 
         self.setState()
         self.animate()
 
-    def setState(self):
-        #SE DEBE COMENTAR
-        self.state = 'idle'
+        return Scrolling
 
-        if (self.velocityY != 0 and self.velocityX < 0): 
+    def setState(self):
+        
+        self.state = 'idle' #Estado predeterminado del personaje para la asignación de la animación
+
+        if (self.velocityY != 0 and self.velocityX < 0):   #Animación de salto a la izquierda
             self.state = 'jumping left'
-        elif (self.velocityY != 0 and self.velocityX > 0):
+        elif (self.velocityY != 0 and self.velocityX > 0): #Animación de salto a la derecha
             self.state = 'jumping right'
-        elif (self.velocityY != 0 and self.velocityX == 0):
+        elif (self.velocityY != 0 and self.velocityX == 0):#Animación de salto a la derecha en caida del personaje
             self.state = 'jumping right'
-        elif (self.velocityX > 0):
+        elif (self.velocityX > 0):      #Animación de movimiento a la derecha
             self.state = 'moving right'
-        elif (self.velocityX < 0):
+        elif (self.velocityX < 0):      #Animación de movimiento a la izquierda
             self.state = 'moving left'
             
     def animate(self):
@@ -275,7 +294,11 @@ class Player(pygame.sprite.Sprite):
                            idleSpritesRobot.spriteDimensions("idle/Idle_03.png"),
                            idleSpritesRobot.spriteDimensions("idle/Idle_04.png"),
                            idleSpritesRobot.spriteDimensions("idle/Idle_05.png"),
-                           idleSpritesRobot.spriteDimensions("idle/Idle_06.png")]
+                           idleSpritesRobot.spriteDimensions("idle/Idle_06.png"),
+                           idleSpritesRobot.spriteDimensions("idle/Idle_07.png"),
+                           idleSpritesRobot.spriteDimensions("idle/Idle_08.png"),
+                           idleSpritesRobot.spriteDimensions("idle/Idle_09.png"),
+                           idleSpritesRobot.spriteDimensions("idle/Idle_10.png")]
         idleFramesRect = np.array(idleFramesRect, dtype=object)
 
         self.idleLeftFrames = idleFramesRect[:, 0]
@@ -355,6 +378,11 @@ class Player(pygame.sprite.Sprite):
         for frame in self.jumpLeftFrames:
             self.jumpRightFrames.append(pygame.transform.flip(frame, True, False))
 
+#------------------------------------------------------------------------------------------------
+#-- 5. Plataformas ------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------
+
+#---- Clase para la creación de cada plataforma como objeto -------------------------------------
 class Platform(pygame.sprite.Sprite): 
     #Se hace uso de pygame.sprite.Sprite que facilita tanto las colisiones como el movimiento y
     #el manejo de sprites (cambios y transiciones). para este caso se puede usar los grupos de 
@@ -366,31 +394,60 @@ class Platform(pygame.sprite.Sprite):
 
         #se carga la imagen que se utiliza para la plataforma, con longitud variable
         self.image = pygame.transform.scale(platformImage, (width, 30)) 
-        self.rect = self.image.get_rect() #se obtiene el rectangulo para la imagen correspondiente
+        self.rect = self.image.get_rect()#se obtiene el rectangulo para la imagen correspondiente
 
         #Inicialización de coordenadas xy para la plataforma
         self.rect.x = x
         self.rect.y = y
 
+    def update(self, Scrolling):
+        self.rect.y += Scrolling              #El movimiento de las plataformas se hace en Y
 
-robotPlayer = Player() #Creación del personaje
+        #Verificación para determinar si se debe eliminar una plataforma cuando sale de pantalla
+        if self.rect.top > SCREEN_HEIGHT:
+            self.kill()                       #Se elimina la plataforma al salir de pantalla
 
-#Creación de plataformas
-platformsGroup = pygame.sprite.Group() #Instancia del uso de pygame groups
-for i in range(PLATFOR_NUMBER):        #Se crean tantas plataformas como PLATFOR_NUMBER declarado
-    
-    #Se genera aleatoriamente el ancho y las coordenadas
-    platformWidth = np.random.randint(100,200)
-    platformX = np.random.randint(0, SCREEN_WIDTH-platformWidth) #Se debe limitar con el ancho
-    platformY = i*np.random.randint(80,120)
+#---- Función para garantizar que el espacio entre plataforma sea el adecuado -------------------
+def xCoordinate(prevPlatform, nextCoordX, nextWidth):
+    prevCoordX = prevPlatform.rect.x    #Se recupera la posición x de la plataforma anterior
+    prevWidth = prevPlatform.rect.width #Se recupera el tamaño de la plataforma anterior
+    control = True #Variable de control para el ciclo
 
-    platformI = Platform(platformX, platformY, platformWidth) #Se crea una plataforma
-    platformsGroup.add(platformI) #Se agrega la plataforma creada al grupo de plataformas
-
-
+    #Hasta no encontrar una coordenada X que permita el salto, no se termina el ciclo
+    while control:
+        if prevCoordX-nextCoordX < 0 : #Se identifica si la plataforma siguiente esta en izq o der
+            prevRightEdge = prevCoordX+nextWidth #Coordenada lado derecho, plataforma anterior
+            nextLeftEdge  = nextCoordX           #Coordenada lado izquierdo, plataforma siguiente
+            #La distancia entre las coordenadas anteriores no debe superar 100
+            if abs(prevRightEdge-nextLeftEdge) > 190: 
+                nextCoordX = np.random.randint(100, SCREEN_WIDTH-nextWidth-10) #Se calcula una nueva coord
+            else:
+                control = False #Si no supera la distancia, se puede terminar el ciclo
+        else:
+            prevLeftEdge  = prevCoordX           #Coordenada lado izquierdo, plataforma anterior
+            nextRightEdge = nextCoordX+prevWidth #Coordenada lado derecho, plataforma siguiente
+            #La distancia entre las coordenadas anteriores no debe superar 100
+            if abs(prevLeftEdge-nextRightEdge) > 190:
+                nextCoordX = np.random.randint(100, SCREEN_WIDTH-nextWidth-10) #Se calcula una nueva coord
+            else:
+                control = False #Si no supera la distancia, se puede terminar el ciclo
+    return nextCoordX #Se retorna la coordenada X que cumple las consideraciones
 
 #------------------------------------------------------------------------------------------------
-#-- 5. Funcionamiento e integración -------------------------------------------------------------
+#-- 6. Instancias -------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------
+robotPlayer = Player() #Creación del personaje
+
+#---- Creación de plataformas -------------------------------------------------------------------
+platformsGroup = pygame.sprite.Group()#Instancia del uso de pygame groups
+
+#Plataforma inicial con coordenadas aproximadamente en la mitad de la ventana
+platformI = Platform((SCREEN_WIDTH-150)//2, SCREEN_HEIGHT-100, 150)
+Scrolling_PlfPosy.append(SCREEN_HEIGHT-100)#Se agrega la coordenada de la plataforma inicial
+platformsGroup.add(platformI)        #Se agrega la plataforma creada al grupo de plataformas
+
+#------------------------------------------------------------------------------------------------
+#-- 8. Funcionamiento e integración -------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
 
 #---- Se define el ciclo con el cual se evita el cierre de la ventana principal creada ----------
@@ -399,38 +456,96 @@ while playing:
     #------ Actualización del reloj por frame ---------------------------------------------------
     clock.tick(FPS) #se realiza cada 60 segundos la actualización en pantalla (para animaciones)
 
-    #------ Cambio del fondo de la ventana  -----------------------------------------------------
-    screen.blit(backGroundImage, (0,0)) #Cambia los pixeles de la ventana, (recurso, coordenada)
+    if GAME_OVER == False:
+        #------ Cambio del fondo de la ventana con desplazamiento -----------------------------------
+        screen.blit(backGroundImage, (0,0))
+        
+        #------ Actualización y dibujo de personaje -------------------------------------------------
+        Scrolling = robotPlayer.moving()
+        robotPlayer.draw(screen)
 
-    #------ Actualización y dibujo de sprites ---------------------------------------------------
-    platformsGroup.draw(screen)
-    robotPlayer.moving()
-    robotPlayer.draw(screen)
+        #------ Creación de las plataformas ---------------------------------------------------------
+        if len(platformsGroup) < PLATFOR_NUMBER:
+            platformWidth = np.random.randint(150,250) #Se genera un tamaño aleatorio
 
-    #------ Inicialización del salto, para evitar vuelo con tecla sostenida ---------------------
-    robotPlayer.UP_KEY = False 
+            #Se asegura el espaciamiento no supera el alcance del salto con la función xCoordinate
+            platformX = np.random.randint(50, SCREEN_WIDTH-platformWidth-10)
+            platformX = xCoordinate(platformI, platformX, platformWidth)
+            
+            #Apartir de la ultima plataforma creada se genera una nueva coordenada Y
+            platformY = platformI.rect.y - np.random.randint(200,300)
+            
+            platformI = Platform(platformX, platformY, platformWidth)#Se crea una plataforma
+            platformsGroup.add(platformI)                            #Se agrega plataforma al grupo  
+
+        #------ Actualización y dibujo de plataformas -----------------------------------------------
+        platformsGroup.update(Scrolling)
+        platformsGroup.draw(screen)
+
+        #------ Inicialización del salto, para evitar vuelo con tecla sostenida ---------------------
+        robotPlayer.UP_KEY = False 
+
+        #------ Reconocimiento de fin de juego (fin de partida) -------------------------------------
+        if robotPlayer.rect.top > SCREEN_HEIGHT: #Si el rect del personaje sale de pantalla en caida
+            GAME_OVER = True                     #se acaba el juego
+    else:
+        #Se muestra en pantalla que el juego ha terminado, el puntaje y la instrucción de reinicio
+        if Fade_background < SCREEN_HEIGHT:
+            Fade_background += 12
+            pygame.draw.rect(screen, BLACK, (0,0, SCREEN_WIDTH, Fade_background))
+        screenDrawText('~ GAME OVER ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 300)
+        screenDrawText('~ SCORE: '+str(Score)+' ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 350)
+        screenDrawText('~ PRESS ENTER ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 400)
+
+        #Si el usuario presiona enter, se reinicia el juego
+        key = pygame.key.get_pressed()
+        if key[pygame.K_KP_ENTER]:
+            #------ Reinicio de variables  ------------------------------------------------------
+            GAME_OVER = False
+            Scrolling = 0
+            Scrolling_PlfPosy = []
+            Score = 0
+            Fade_background = 0
+            #------ Reubicación del personaje  --------------------------------------------------
+            robotPlayer.rect.center = ((SCREEN_WIDTH-10)//2,SCREEN_HEIGHT-200)
+            #------ Reinicio de plataformas  ----------------------------------------------------
+            platformsGroup.empty() #Se eliminan todas las plataformas presentes en el grupo
+
+            #Plataforma inicial con coordenadas aproximadamente en la mitad de la ventana
+            platformI = Platform((SCREEN_WIDTH-150)//2, SCREEN_HEIGHT-100, 150)
+            Scrolling_PlfPosy.append(SCREEN_HEIGHT-100)#Se agrega la coordenada
+            platformsGroup.add(platformI)        #Se agrega la plataforma al grupo de plataformas
+
+
 
     #------ Manejo de eventos  ------------------------------------------------------------------
     #------ pygame.event.get() obtendrá todos los eventos y los eliminará de la cola ------------
     for event in pygame.event.get():
         #------ el evento es de tipo QUIT cuando se presiona el boton "X" de la ventana ---------
         if event.type == pygame.QUIT:
-            playing = False #Se termina el ciclo para permitir el cierre de la ventana
-        
-        #SE DEBE COMENTAR MEJOR LAS SIGUIENTES LINEAS
+            playing = False #Se termina el ciclo para permitir el cierre de la ventana 
+
+        #------ Eventos para el manejo del personaje, desplazamientos ---------------------------     
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
+            #activación de movimiento hacia la izquierda al presionar tecla 'izquierda'
+            if event.key == pygame.K_LEFT:      
                 robotPlayer.LEFT_KEY, robotPlayer.FACING_LEFT = True,True
-            elif event.key == pygame.K_RIGHT:
+            #activación de movimiento hacia la derecha al presionar tecla 'derecha'
+            elif event.key == pygame.K_RIGHT:    
                 robotPlayer.RIGHT_KEY, robotPlayer.FACING_LEFT = True,False
-            elif event.key == pygame.K_UP:
-                robotPlayer.UP_KEY = True
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_LEFT:
+            #Solo salta cuando la variable UnlockJump está en True
+            elif event.key == pygame.K_UP and robotPlayer.UnlockJump == True: 
+                robotPlayer.UP_KEY = True     #Luego de saltar se deshabilita el salto hasta una                            
+                robotPlayer.UnlockJump = False#nueva colisión con una plataforma
+        if event.type == pygame.KEYUP:  
+            #desactiva el movimiento hacia la izquierda al soltar la tecla 'izquierda'        
+            if event.key == pygame.K_LEFT:       
                 robotPlayer.LEFT_KEY = False
-            elif event.key == pygame.K_RIGHT:
+            #desactiva el movimiento hacia la derecha al soltar la tecla 'derecha'
+            elif event.key == pygame.K_RIGHT:    
                 robotPlayer.RIGHT_KEY = False
-            elif event.key == pygame.K_UP:
+            #desactiva el movimiento de salto al soltar la tecla de 'arriba'
+            elif event.key == pygame.K_UP:       
                 robotPlayer.UP_KEY = False
 
     #------ Actualización grafica de la ventana  ------------------------------------------------
