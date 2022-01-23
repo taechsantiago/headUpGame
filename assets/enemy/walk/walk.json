@@ -1,0 +1,50 @@
+{
+"walk/walk_01.png":
+{
+    "escale":{"w":186, "h":90},
+    "downsizing":{"w":0, "h":0},
+    "offset":{"x":35, "y":10}
+},
+"walk/walk_02.png":
+{
+    "escale":{"w":180, "h":90},
+    "downsizing":{"w":0, "h":0},
+    "offset":{"x":35, "y":10}
+},
+"walk/walk_03.png":
+{
+    "escale":{"w":158, "h":90},
+    "downsizing":{"w":0, "h":0},
+    "offset":{"x":35, "y":10}
+},
+"walk/walk_04.png":
+{
+    "escale":{"w":144, "h":90},
+    "downsizing":{"w":0, "h":0},
+    "offset":{"x":35, "y":10}
+},
+"walk/walk_05.png":
+{
+    "escale":{"w":135, "h":90},
+    "downsizing":{"w":0, "h":0},
+    "offset":{"x":35, "y":10}
+},
+"walk/walk_06.png":
+{
+    "escale":{"w":148, "h":90},
+    "downsizing":{"w":0, "h":0},
+    "offset":{"x":35, "y":10}
+},
+"walk/walk_07.png":
+{
+    "escale":{"w":171, "h":90},
+    "downsizing":{"w":0, "h":0},
+    "offset":{"x":35, "y":10}
+},
+"walk/walk_08.png":
+{
+    "escale":{"w":183, "h":90},
+    "downsizing":{"w":0, "h":0},
+    "offset":{"x":35, "y":10}
+}
+}
