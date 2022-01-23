@@ -18,13 +18,11 @@
 #------------------------------------------------------------------------------------------------
 #-- 1. Librerías --------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
-from pickle import FALSE
-from platform import platform
-from wsgiref.util import request_uri
 import pygame      #Conjunto de modulos de python diseñado para el desarrollo de videojuegos
 import json        #Modulo de python para el manejo de datos de formato JSON
 import numpy as np #Librería fundamental para la computación científica en Python
 from scipy.spatial import distance #Función de la biblioteca scipy para el calculo de distancia 
+import os          #Modulo de python que permite el manejo de directorios/archivos
 
 #------------------------------------------------------------------------------------------------
 #-- 2. Inicialización ---------------------------------------------------------------------------
@@ -41,15 +39,15 @@ FPS = 80                #Constante que controla los frames por segundo para actu
 GRAVITY = 1             #Constante que simula la gravedad para el movimiento fisico
 WHITE = (255, 255, 255) #Constante de color
 BLACK = (0, 0, 0)       #Constante de color
+BACKGROUND =(47, 45, 60)#Constante de color
 PLATFOR_NUMBER = 10     #Constante que permite decidir el número de plataformas en pantalla
 SCROLLING_LIMIT = 300   #Constante para determinar cuando se activa el desplazamiento de pantalla
 GAME_OVER = False       #Constante que permite determinar el fin de la partida
 FONT_SMALL = pygame.font.SysFont('Lucida Sans',20, bold=True) #Constante de letra tamaño pequeño
 FONT_BIG = pygame.font.SysFont('Lucida Sans',24, bold=True)   #Constante de letra tamaño grande
 Scrolling = 0           #No es una constante, desplaza las plataformas
-Scrolling_PlfPosy = []  #No es una constante, permite evitar que las plataformas se generen con
-                        #una misma coordenada de acuerdo al eje Y
-Score = 0               #No es una constante, permite llevar cuenta del puntaje alcanzado
+Score = -PLATFOR_NUMBER #No es una constante, permite llevar cuenta del puntaje alcanzado
+High_score = 0          #No es una constante, permite llevar cuenta del puntaje más alto 
 Fade_background = 0     #No es una constante, permite la visualización correcta del game over
 
 #---- Se crea la ventana principal del juego ----------------------------------------------------
@@ -65,6 +63,22 @@ platformImage = pygame.image.load('./assets/platform/Tile.png').convert_alpha()#
 def screenDrawText(stringText, fontText, colorText, posXText, posYText):
     imageText = fontText.render(stringText, True, colorText)
     screen.blit(imageText, (posXText, posYText))
+
+#---- Función para los panel de score en pantalla -----------------------------------------------
+def screenDrawPanel():
+    pygame.draw.rect(screen, BACKGROUND, (0, 0, SCREEN_WIDTH, 30))
+    pygame.draw.line(screen, WHITE, (1,30), (SCREEN_WIDTH, 30), 1)
+    screenDrawText('SCORE : '+str(Score)+' | HIGH SCORE : '+str(High_score), FONT_SMALL, WHITE, 10, 2)
+
+#---- Determinar si existe un score más alto o no ------------------------------------------------
+#El score se almacena en un archivo .txt, si dicho archivo existe, se recupera el score pero si no
+#existe, se define en cero el score más alto
+if os.path.exists('highScore.txt'): 
+    print("aca")
+    with open('highScore.txt', 'r') as file:
+        High_score = int(file.read())
+else:
+    High_score = 0
 
 #------------------------------------------------------------------------------------------------
 #-- 3. Sprites ----------------------------------------------------------------------------------
@@ -162,8 +176,6 @@ class Player(pygame.sprite.Sprite):
         if (self.rect.x+58) + self.velocityX > SCREEN_WIDTH:
             self.velocityX = SCREEN_WIDTH - (self.rect.x+58)
         
-        #if self.rect.bottom+self.velocityY > SCREEN_HEIGHT:
-        #    self.velocityY = -20
 
         #---- Reconocimiento colisión con plataformas ----------------------------------------------
         for platform_i in platformsGroup: #Se recorren las plataformas para identificar colisión
@@ -181,6 +193,8 @@ class Player(pygame.sprite.Sprite):
                         self.rect.bottom = platform_i.rect.top 
                         self.UnlockJump = True #Permite saltar luego de estar sobre una plataforma
                         self.velocityY = 0
+                        if platform_i.getHorizontalType():
+                            self.rect.x += platform_i.getVelocityX()
 
         #---- Reconocimiento para activar desplazamiento --------------------------------------------
         Scrolling = 0
@@ -389,23 +403,54 @@ class Platform(pygame.sprite.Sprite):
     #pygame que optimizan la utilización recursiva de la clase
 
     #---- Inicialización de la plataforma -------------------------------------------------------
-    def __init__(self, x, y, width): 
+    def __init__(self, x, y, width, moving): 
         pygame.sprite.Sprite.__init__(self) #constructor de la clase padre
 
+        self.width = width #Inicilización del tamaño de la plataforma
+
         #se carga la imagen que se utiliza para la plataforma, con longitud variable
-        self.image = pygame.transform.scale(platformImage, (width, 30)) 
+        self.image = pygame.transform.scale(platformImage, (self.width, 30)) 
         self.rect = self.image.get_rect()#se obtiene el rectangulo para la imagen correspondiente
 
         #Inicialización de coordenadas xy para la plataforma
         self.rect.x = x
         self.rect.y = y
 
+        self.moving = moving  #Se inicializa el tipo de plataforma, movimiento horizontal
+        self.counterMoving = np.random.randint(0,5)    #Determina el limite movimiento horizontal
+        self.direction = np.random.choice([-1,1],1)[0] #Se escoge dirección, movimiento horizontal
+        self.velocityX = 0                             #Inicialización de la velocidad 
+        self.accelerationX = np.random.randint(2,6)    #Inicialización random de la aceleración
+        self.limitMoving = np.random.randint(200,400)  #Inicialización el limite del movimiento
+
+    #---- Actualización y movimiento de la plataforma --------------------------------------------
     def update(self, Scrolling):
-        self.rect.y += Scrolling              #El movimiento de las plataformas se hace en Y
+        #---- Movimiento vertical -----------------------------------------------------------------
+        self.rect.y += Scrolling          #El movimiento de las plataformas en Y
+
+        #---- Movimiento horizontal ---------------------------------------------------------------
+        if self.moving:                   #Si la plataforma es de tipo movimiento horizontal 
+            self.velocityX = self.direction * self.accelerationX #la velocidad es aleatoria       
+            self.rect.x += self.velocityX #se modifica su posición en X
+            self.counterMoving += self.accelerationX#Se incrementa para permitir limitar movimiento
+        if self.counterMoving >= np.random.randint(200,400):#Si la plataforma se ha desplazado más de un numero
+            self.direction *= -1                  #aleatorio, se invierte el movimiento
+            self.counterMoving = 0
+
+        #---- Reconocimiento de limites de pantalla para movimiento horizontal --------------------       
+        if self.rect.x + self.velocityX < 0 or (self.rect.x+self.width) + self.velocityX > SCREEN_WIDTH: 
+            self.direction *= -1   #Al toparse con algun limite horizontal se invierte el movimiento
+            self.counterMoving = 0
 
         #Verificación para determinar si se debe eliminar una plataforma cuando sale de pantalla
         if self.rect.top > SCREEN_HEIGHT:
-            self.kill()                       #Se elimina la plataforma al salir de pantalla
+            self.kill()                   #Se elimina la plataforma al salir de pantalla
+    
+    def getHorizontalType(self):
+        return self.moving
+
+    def getVelocityX(self):
+        return self.velocityX
 
 #---- Función para garantizar que el espacio entre plataforma sea el adecuado -------------------
 def xCoordinate(prevPlatform, nextCoordX, nextWidth):
@@ -442,9 +487,9 @@ robotPlayer = Player() #Creación del personaje
 platformsGroup = pygame.sprite.Group()#Instancia del uso de pygame groups
 
 #Plataforma inicial con coordenadas aproximadamente en la mitad de la ventana
-platformI = Platform((SCREEN_WIDTH-150)//2, SCREEN_HEIGHT-100, 150)
-Scrolling_PlfPosy.append(SCREEN_HEIGHT-100)#Se agrega la coordenada de la plataforma inicial
+platformI = Platform((SCREEN_WIDTH-150)//2, SCREEN_HEIGHT-100, 150, False)
 platformsGroup.add(platformI)        #Se agrega la plataforma creada al grupo de plataformas
+Score += 1 #Cada que se agregue una plataforma, se incrementa el score en 1
 
 #------------------------------------------------------------------------------------------------
 #-- 8. Funcionamiento e integración -------------------------------------------------------------
@@ -466,6 +511,7 @@ while playing:
 
         #------ Creación de las plataformas ---------------------------------------------------------
         if len(platformsGroup) < PLATFOR_NUMBER:
+            Score += 1 #Cada que se agregue una plataforma, se incrementa el score en 1
             platformWidth = np.random.randint(150,250) #Se genera un tamaño aleatorio
 
             #Se asegura el espaciamiento no supera el alcance del salto con la función xCoordinate
@@ -474,47 +520,65 @@ while playing:
             
             #Apartir de la ultima plataforma creada se genera una nueva coordenada Y
             platformY = platformI.rect.y - np.random.randint(200,300)
-            
-            platformI = Platform(platformX, platformY, platformWidth)#Se crea una plataforma
-            platformsGroup.add(platformI)                            #Se agrega plataforma al grupo  
 
-        #------ Actualización y dibujo de plataformas -----------------------------------------------
+            #Con animos de generar mayor dificultad, se generan plataformas con movimiento horizontal
+            platformType = np.random.choice([0,1],1)[0] #Se escoge aleatoriamente, 0 False 1 True
+            if platformType and Score>5:
+                #Se crea una plataforma con movimiento horizontal
+                platformI = Platform(platformX, platformY, platformWidth, True)
+            else:
+                #Se crea una plataforma sin movimiento horizontal
+                platformI = Platform(platformX, platformY, platformWidth, False)
+            platformsGroup.add(platformI) #Se agrega plataforma al grupo  
+
+        #------ Actualización y dibujo de plataformas ------------------------------------------------
         platformsGroup.update(Scrolling)
         platformsGroup.draw(screen)
+
+        #------ Dibujo del panel para el score en pantalla ------------------------------------------
+        screenDrawPanel()
 
         #------ Inicialización del salto, para evitar vuelo con tecla sostenida ---------------------
         robotPlayer.UP_KEY = False 
 
-        #------ Reconocimiento de fin de juego (fin de partida) -------------------------------------
+        #------ Reconocimiento de fin de juego (fin de partida) ----------------------------------------
         if robotPlayer.rect.top > SCREEN_HEIGHT: #Si el rect del personaje sale de pantalla en caida
             GAME_OVER = True                     #se acaba el juego
     else:
+        #------ Aviso en pantalla GAME OVER  -----------------------------------------------------------
         #Se muestra en pantalla que el juego ha terminado, el puntaje y la instrucción de reinicio
         if Fade_background < SCREEN_HEIGHT:
             Fade_background += 12
             pygame.draw.rect(screen, BLACK, (0,0, SCREEN_WIDTH, Fade_background))
-        screenDrawText('~ GAME OVER ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 300)
-        screenDrawText('~ SCORE: '+str(Score)+' ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 350)
-        screenDrawText('~ PRESS ENTER ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 400)
+        else:
+            screenDrawText('~  GAME OVER  ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 300)
+            screenDrawText('~  SCORE: '+str(Score)+'  ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 350)
+            screenDrawText('~  HIGH SCORE: '+str(High_score)+'  ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 400)
+            screenDrawText('~  PRESS ENTER  ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 450)
 
-        #Si el usuario presiona enter, se reinicia el juego
-        key = pygame.key.get_pressed()
-        if key[pygame.K_KP_ENTER]:
-            #------ Reinicio de variables  ------------------------------------------------------
-            GAME_OVER = False
-            Scrolling = 0
-            Scrolling_PlfPosy = []
-            Score = 0
-            Fade_background = 0
-            #------ Reubicación del personaje  --------------------------------------------------
-            robotPlayer.rect.center = ((SCREEN_WIDTH-10)//2,SCREEN_HEIGHT-200)
-            #------ Reinicio de plataformas  ----------------------------------------------------
-            platformsGroup.empty() #Se eliminan todas las plataformas presentes en el grupo
+            #------ Actualización de puntaje más alto  --------------------------------------------------
+            if Score > High_score: #Se reconoce si el score actual es más alto que el score más alto
+                High_score = Score #En caso de ser más alto, se reemplaza
+                with open('highScore.txt', 'w') as file: #Se debe almacenar y para ello se usa un txt
+                    file.write(str(High_score))
 
-            #Plataforma inicial con coordenadas aproximadamente en la mitad de la ventana
-            platformI = Platform((SCREEN_WIDTH-150)//2, SCREEN_HEIGHT-100, 150)
-            Scrolling_PlfPosy.append(SCREEN_HEIGHT-100)#Se agrega la coordenada
-            platformsGroup.add(platformI)        #Se agrega la plataforma al grupo de plataformas
+            #Si el usuario presiona enter, se reinicia el juego
+            key = pygame.key.get_pressed()
+            if key[pygame.K_KP_ENTER]:
+                #------ Reinicio de variables  ----------------------------------------------------------
+                GAME_OVER = False
+                Scrolling = 0
+                Scrolling_PlfPosy = []
+                Score = 0
+                Fade_background = 0
+                #------ Reubicación del personaje  --------------------------------------------------
+                robotPlayer.rect.center = ((SCREEN_WIDTH-10)//2,SCREEN_HEIGHT-200)
+                #------ Reinicio de plataformas  ----------------------------------------------------
+                platformsGroup.empty() #Se eliminan todas las plataformas presentes en el grupo
+
+                #Plataforma inicial con coordenadas aproximadamente en la mitad de la ventana
+                platformI = Platform((SCREEN_WIDTH-150)//2, SCREEN_HEIGHT-100, 150, False)
+                platformsGroup.add(platformI)        #Se agrega la plataforma al grupo de plataformas
 
 
 
@@ -523,6 +587,13 @@ while playing:
     for event in pygame.event.get():
         #------ el evento es de tipo QUIT cuando se presiona el boton "X" de la ventana ---------
         if event.type == pygame.QUIT:
+
+            #------ Actualización de puntaje más alto  --------------------------------------------------
+            if Score > High_score: #Se reconoce si el score actual es más alto que el score más alto
+                High_score = Score #En caso de ser más alto, se reemplaza
+                with open('highScore.txt', 'w') as file: #Se debe almacenar y para ello se usa un txt
+                    file.write(str(High_score))
+
             playing = False #Se termina el ciclo para permitir el cierre de la ventana 
 
         #------ Eventos para el manejo del personaje, desplazamientos ---------------------------     
