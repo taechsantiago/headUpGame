@@ -153,9 +153,6 @@ class Player(pygame.sprite.Sprite):
         #el offset evita problemas de colisión, es el rectangulo el que se toma en cuenta
         display.blit(self.currentImage, (self.rect.x-self.offsetX, self.rect.y-self.offsetY))
 
-        #BORRAR SIGUIENTE LINEA PARA ENTREGAR
-        pygame.draw.rect(display, WHITE, self.rect, 2)#se dibuja el rectangulo BORRAR PARA ENTREGAR
-
     #---- Movimiento y actualización del personaje --------------------------------------------------               
     def moving(self):
         #SE DEBE COMENTAR MEJOR EL MOVIMIENTO VERTICAL
@@ -215,6 +212,8 @@ class Player(pygame.sprite.Sprite):
 
         self.setState()
         self.animate()
+
+        self.mask = pygame.mask.from_surface(self.currentImage)
 
         return Scrolling
 
@@ -441,10 +440,10 @@ class Enemy(pygame.sprite.Sprite):
 
         self.direction = np.random.choice([-1,1],1)[0] #Se escoge dirección, movimiento horizontal
         if self.direction == 1: #Se identifica la dirección del movimiento del enemigo
-            self.rectPosX = 0   #Si es para la derecha, inicia en la parte izquierda de la ventana
+            self.rectPosX = -20 #Si es para la derecha, inicia en la parte izquierda de la ventana
             self.state = 'moving right'
         else:                   #Si es para la izquierda, inicia en la parte derecha de la ventana
-            self.rectPosX = SCREEN_WIDTH
+            self.rectPosX = SCREEN_WIDTH+20
             self.state = 'moving left'
 
         self.rect = pygame.Rect(self.rectPosX, self.rectPosY, self.walkLeftRects[0][0], self.walkLeftRects[0][1])
@@ -453,8 +452,6 @@ class Enemy(pygame.sprite.Sprite):
         self.currentFrame = 0
         self.lastFrame = 0
         self.image = self.walkLeftFrames[0]
-        self.offsetX = 0
-        self.offsetY = 0
 
     #---- Cambio del estado para permitir la animación del enemigo ----------------------------------               
     def setState(self):
@@ -480,26 +477,25 @@ class Enemy(pygame.sprite.Sprite):
                 self.image = self.walkLeftFrames[self.currentFrame]
 
                 #Se actualiza el rect correspondiente para cada sprite
-                self.rect.update(self.rect.x, self.rect.y, self.walkLeftRects[self.currentFrame][0], self.walkLeftRects[self.currentFrame][1])
-                self.offsetX = self.walkLeftOffset[self.currentFrame]['x']
-                self.offsetY = self.walkLeftOffset[self.currentFrame]['y']
+                self.rect.update(self.rect.x, self.rect.y, 
+                self.walkLeftRects[self.currentFrame][0], self.walkLeftRects[self.currentFrame][1])
+                
 
             elif self.state == 'moving right': #se identifica si el movimiento es para la derecha
                 #Se cambia la imagen deacuerdo al sprite escogido segun el tiempo
                 self.image = self.walkRightFrames[self.currentFrame]
 
                 #Se actualiza el rect correspondiente para cada sprite
-                self.rect.update(self.rect.x, self.rect.y, self.walkRightRects[self.currentFrame][0], self.walkRightRects[self.currentFrame][1])
-                self.offsetX = self.walkRightOffset[self.currentFrame]['x']
-                self.offsetY = self.walkRightOffset[self.currentFrame]['y']
-
+                self.rect.update(self.rect.x, self.rect.y, 
+                self.walkRightRects[self.currentFrame][0], self.walkRightRects[self.currentFrame][1])
+                
     #---- Actualización y movimiento del enemigo --------------------------------------------------
     def update(self, Scrolling):
         #---- Movimiento vertical -----------------------------------------------------------------
         self.rect.y += Scrolling          #El movimiento de los enemigos en Y
 
         #---- Movimiento horizontal ---------------------------------------------------------------
-        self.rect.x += self.direction * 3 #El movimiento de los enemigos en X
+        self.rect.x += self.direction * 2 #El movimiento de los enemigos en X
 
         #Verificación para determinar si se debe eliminar un enemigo cuando sale de pantalla
         if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH:
@@ -700,6 +696,14 @@ while playing:
         #------ Reconocimiento de fin de juego (fin de partida) ----------------------------------------
         if robotPlayer.rect.top > SCREEN_HEIGHT: #Si el rect del personaje sale de pantalla en caida
             GAME_OVER = True                     #se acaba el juego
+
+        #Si el personaje colisiona con algún enemigo, se acaba el juego. En spritecollide se usa False
+        #para no eliminar el sprite una vez se identifica la colisión
+        if  pygame.sprite.spritecollide(robotPlayer, enemiesGroup, False):
+            #El tipo de colisión con los enemigos es por medio de una mascara, esto para asegurarse de que
+            #la colisión no se active si los rect se tocan, si no si la imagen colisiona
+            if pygame.sprite.spritecollide(robotPlayer, enemiesGroup, False, pygame.sprite.collide_mask):
+                GAME_OVER = True
     else:
         #------ Aviso en pantalla GAME OVER  -----------------------------------------------------------
         #Se muestra en pantalla que el juego ha terminado, el puntaje y la instrucción de reinicio
