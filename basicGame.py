@@ -18,15 +18,17 @@
 #-----------------------------------------------------------------------------------------------------
 #-- 1. Librerías -------------------------------------------------------------------------------------
 #-----------------------------------------------------------------------------------------------------
-import pygame      #Conjunto de modulos de python diseñado para el desarrollo de videojuegos
-import json        #Modulo de python para el manejo de datos de formato JSON
-import numpy as np #Librería fundamental para la computación científica en Python
+import pygame            #Conjunto de modulos de python diseñado para el desarrollo de videojuegos
+import json              #Modulo de python para el manejo de datos de formato JSON
+import numpy as np       #Librería fundamental para la computación científica en Python
 from scipy.spatial import distance #Función de la biblioteca scipy para el calculo de distancia 
-import os          #Modulo de python que permite el manejo de directorios/archivos
+import os                #Modulo de python que permite el manejo de directorios/archivos
+from pygame import mixer #módulo pygame para cargar y reproducir sonidos
 
 #-----------------------------------------------------------------------------------------------------
 #-- 2. Inicialización --------------------------------------------------------------------------------
 #-----------------------------------------------------------------------------------------------------
+mixer.init()                #Inicializa el módulo mixer para la carga y reproducción de sonido
 pygame.init()               #Inicialización de pygame
 clock = pygame.time.Clock() #inicialización del reloj, util para las animaciones y actualización
 
@@ -58,6 +60,18 @@ pygame.display.set_caption('headUpGame')                       #cambio del titul
 #---- imagen png cargada -----------------------------------------------------------------------------
 backGroundImage = pygame.image.load('./assets/background/space2.jpg').convert_alpha()#Fondo
 platformImage = pygame.image.load('./assets/platform/Tile.png').convert_alpha()#Plataformas
+
+#---- Se carga la musica y efectos de sonido ---------------------------------------------------------
+#Musica general
+pygame.mixer.music.load('./music/The_Astronaut_loop.wav')#Carga un archivo de musica y lo preparará
+pygame.mixer.music.set_volume(0.1)                       #Modifica el volumen para la reproducción
+pygame.mixer.music.play(-1, 0.0, )                       #Reproduce el archivo de musica cargado
+#Efecto de sonido para el Game Over
+gameOverFx = pygame.mixer.Sound('./music/game_over.wav') #Crear un nuevo objeto de sonido desde un archivo
+gameOverFx.set_volume(0.5)                           #Modifica el volumen para la reproducción
+#Efecto de sonido para el enemigo
+enemyFx = pygame.mixer.Sound('./music/scream.wav') #Crear un nuevo objeto de sonido desde un archivo
+enemyFx.set_volume(0.1)                            #Modifica el volumen para la reproducción
 
 #---- Función para los letreros en pantalla ----------------------------------------------------------
 def screenDrawText(stringText, fontText, colorText, posXText, posYText):
@@ -491,11 +505,12 @@ class Enemy(pygame.sprite.Sprite):
                 
     #---- Actualización y movimiento del enemigo --------------------------------------------------
     def update(self, Scrolling):
+        enemyFx.play() #Se reproduce el efecto de sonido para el enemigo
         #---- Movimiento vertical -----------------------------------------------------------------
         self.rect.y += Scrolling          #El movimiento de los enemigos en Y
 
         #---- Movimiento horizontal ---------------------------------------------------------------
-        self.rect.x += self.direction * 2 #El movimiento de los enemigos en X
+        self.rect.x += self.direction * np.random.randint(2,4) #El movimiento de los enemigos en X
 
         #Verificación para determinar si se debe eliminar un enemigo cuando sale de pantalla
         if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH:
@@ -681,7 +696,7 @@ while playing:
 
         #------ Creación de los enemigos ---------------------------------------------------------------
         if len(enemiesGroup) == 0 and Score > 10:
-            enemyI = Enemy(500)
+            enemyI = Enemy(np.random.randint(50,400))
             enemiesGroup.add(enemyI)
         #------ Actualización y dibujo de enemigos -----------------------------------------------------
         enemiesGroup.update(Scrolling)
@@ -696,10 +711,12 @@ while playing:
         #------ Reconocimiento de fin de juego (fin de partida) ----------------------------------------
         if robotPlayer.rect.top > SCREEN_HEIGHT: #Si el rect del personaje sale de pantalla en caida
             GAME_OVER = True                     #se acaba el juego
+            gameOverFx.play()                    #Se reproduce el efecto de sonido para game over
 
         #Si el personaje colisiona con algún enemigo, se acaba el juego. En spritecollide se usa False
         #para no eliminar el sprite una vez se identifica la colisión
         if  pygame.sprite.spritecollide(robotPlayer, enemiesGroup, False):
+            gameOverFx.play()            #Se reproduce el efecto de sonido para game over
             #El tipo de colisión con los enemigos es por medio de una mascara, esto para asegurarse de que
             #la colisión no se active si los rect se tocan, si no si la imagen colisiona
             if pygame.sprite.spritecollide(robotPlayer, enemiesGroup, False, pygame.sprite.collide_mask):
