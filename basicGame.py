@@ -711,16 +711,18 @@ while playing:
         #------ Reconocimiento de fin de juego (fin de partida) ----------------------------------------
         if robotPlayer.rect.top > SCREEN_HEIGHT: #Si el rect del personaje sale de pantalla en caida
             GAME_OVER = True                     #se acaba el juego
+            enemyFx.stop()                       #Se pausa el sonido del enemigo para dar paso game over
             gameOverFx.play()                    #Se reproduce el efecto de sonido para game over
 
         #Si el personaje colisiona con algún enemigo, se acaba el juego. En spritecollide se usa False
         #para no eliminar el sprite una vez se identifica la colisión
         if  pygame.sprite.spritecollide(robotPlayer, enemiesGroup, False):
-            gameOverFx.play()            #Se reproduce el efecto de sonido para game over
             #El tipo de colisión con los enemigos es por medio de una mascara, esto para asegurarse de que
             #la colisión no se active si los rect se tocan, si no si la imagen colisiona
             if pygame.sprite.spritecollide(robotPlayer, enemiesGroup, False, pygame.sprite.collide_mask):
                 GAME_OVER = True
+                enemyFx.stop()               #Se pausa el sonido del enemigo para dar paso al game over
+                gameOverFx.play()            #Se reproduce el efecto de sonido para game over
     else:
         #------ Aviso en pantalla GAME OVER  -----------------------------------------------------------
         #Se muestra en pantalla que el juego ha terminado, el puntaje y la instrucción de reinicio
