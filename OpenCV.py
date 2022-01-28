@@ -27,12 +27,20 @@ while True:
 
   if len(contours) != 0:
     for contour in contours:
-      if cv2.contourArea(contour) > 500:        # evita que se pinte el contorno de fragmentos con areas muy pequeñas
+      if cv2.contourArea(contour) > 1000:        # evita que se pinte el contorno de fragmentos con areas muy pequeñas
         x, y, w, h = cv2.boundingRect(contour)  # genera rectangulo de contorno de la forma
         cv2.rectangle(img, (x,y), (x + w, y + h), (0, 0, 255), 3) # muestra el rectangulo en pantalla
 
+        if x<150:               # umbrales de decisión para el movimiento horizontal
+          print('izquierda')
+        elif x>300:
+          print('derecha')
+        else:
+          print('medio')
+
 #-------- se puede borrar luego de terminado -------------------------------------
-  cv2.imshow("mask", mask)    # muestra en pantalla la identificación del color
+  #cv2.imshow("mask", mask)    # muestra en pantalla la identificación del color
   cv2.imshow("webcam", img)   # muestra los fotogramas captados por la camara
 
-  cv2.waitKey(1)              # tiempo entre captura de fotogramas
+  cv2.waitKey(10)              # tiempo entre captura de fotogramas
+
