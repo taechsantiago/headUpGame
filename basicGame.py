@@ -24,6 +24,8 @@ import numpy as np       #Librería fundamental para la computación científica
 from scipy.spatial import distance #Función de la biblioteca scipy para el calculo de distancia 
 import os                #Modulo de python que permite el manejo de directorios/archivos
 from pygame import mixer #módulo pygame para cargar y reproducir sonidos
+import cv2
+import numpy as np 
 
 #-----------------------------------------------------------------------------------------------------
 #-- 2. Inicialización --------------------------------------------------------------------------------
@@ -83,6 +85,16 @@ def screenDrawPanel():
     pygame.draw.rect(screen, BACKGROUND, (0, 0, SCREEN_WIDTH, 30))
     pygame.draw.line(screen, WHITE, (1,30), (SCREEN_WIDTH, 30), 1)
     screenDrawText('SCORE : '+str(Score)+' | HIGH SCORE : '+str(High_score), FONT_SMALL, WHITE, 10, 2)
+
+#---- Inicialización de variables para reconocimiento ------------------------------------------------
+
+# Lower es el umbral bajo del color seleccionado, Upper es el umbral superior, esto otorga cierta flexibilidad
+lower = np.array([15,150,20])   #[HUE, SATURATION, VALUE] el primero valor es el color entre (0-180)
+upper = np.array([35,255,255])  #el segundo valor es que tanta saturación de color se espera (de 150 a 255 es el ideal)
+                                #el tercer valor es la referencia al brillo del color selección
+
+video = cv2.VideoCapture(0)     # guarda la captura de la webcam en la variable
+
 
 #---- Determinar si existe un score más alto o no ----------------------------------------------------
 #El score se almacena en un archivo .txt, si dicho archivo existe, se recupera el score pero si no
@@ -658,6 +670,49 @@ Score += 1                    #Cada que se agregue una plataforma, se incrementa
 #---- Se define el ciclo con el cual se evita el cierre de la ventana principal creada --------------
 playing = True #Variable de control para el ciclo mencionado
 while playing:
+
+  #---------------------------------------- reconocimiento de objetos opencv --------------------------------------
+    
+    success, img = video.read()   # toma de valores del video capturado
+    image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)  #conversión de la imagen tomada por la camara
+    mask = cv2.inRange(image, lower, upper)       #encuentra el color escogido en las imagenes de la camara
+
+
+  #----------------------------------------- 2. contorno de la figura ---------------------------------------------
+  #
+  # las siguienets encuentra las coordenadas del color detectado, CHAIN_APPROX_SIMPLE permite tomar los puntos necesarios
+  # del contorno no toma cada punto de las coordenadas, RETR_EXTERNAL toma el contorno externo de la forma con el color
+
+    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)  
+
+    if len(contours) != 0:
+      for contour in contours:
+        if cv2.contourArea(contour) > 1000:        # evita que se pinte el contorno de fragmentos con areas muy pequeñas
+          x, y, w, h = cv2.boundingRect(contour)  # genera rectangulo de contorno de la forma
+          cv2.rectangle(img, (x,y), (x + w, y + h), (0, 0, 255), 3) # muestra el rectangulo en pantalla
+
+          if y<150 and robotPlayer.UnlockJump == True:
+            robotPlayer.UP_KEY = True      #Luego de saltar se deshabilita el salto hasta una                            
+            robotPlayer.UnlockJump = False #nueva colisión con una plataforma
+          if x<150:               # umbrales de decisión para el movimiento horizontal
+            robotPlayer.RIGHT_KEY, robotPlayer.FACING_LEFT = True,False
+          elif x>300:
+            robotPlayer.LEFT_KEY, robotPlayer.FACING_LEFT = True,True
+          else:
+            robotPlayer.LEFT_KEY = False
+            robotPlayer.RIGHT_KEY = False
+
+
+  #-------- se puede borrar luego de terminado -------------------------------------
+  #cv2.imshow("mask", mask)    # muestra en pantalla la identificación del color
+    cv2.imshow("webcam", img)   # muestra los fotogramas captados por la camara
+
+    #cv2.waitKey(10)              # tiempo entre captura de fotogramas
+
+    #------------ Reconocimiento de movimientos por camara con opencv-----------------------------------
+
+
+
     #------ Actualización del reloj por frame -------------------------------------------------------
     clock.tick(FPS) #se realiza cada 60 segundos la actualización en pantalla (para animaciones)
 
@@ -726,6 +781,10 @@ while playing:
     else:
         #------ Aviso en pantalla GAME OVER  -----------------------------------------------------------
         #Se muestra en pantalla que el juego ha terminado, el puntaje y la instrucción de reinicio
+
+        robotPlayer.LEFT_KEY = False   #Permite que el personaje inicie completamente inmovil
+        robotPlayer.RIGHT_KEY = False
+
         if Fade_background < SCREEN_HEIGHT:
             Fade_background += 12
             pygame.draw.rect(screen, BLACK, (0,0, SCREEN_WIDTH, Fade_background))
@@ -759,6 +818,10 @@ while playing:
                 platformsGroup.add(platformI)        #Se agrega la plataforma al grupo de plataformas
                 #------ Reinicio de enemigos  ----------------------------------------------------------
                 enemiesGroup.empty() #Se eliminan todas las plataformas presentes en el grupo
+
+
+
+
 
     #------ Manejo de eventos  -------------------------------------------------------------------------
     #------ pygame.event.get() obtendrá todos los eventos y los eliminará de la cola -------------------
