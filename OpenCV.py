@@ -14,7 +14,7 @@ video = cv2.VideoCapture(0)     # guarda la captura de la webcam en la variable
 
 while True:
   success, img = video.read()   # toma de valores del video capturado
-  image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)  #conversión de la imagen tomada por la camara
+  image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)  #conversión de la imagen tomada por la camara a HSV
   mask = cv2.inRange(image, lower, upper)       #encuentra el color escogido en las imagenes de la camara
 
 
@@ -27,7 +27,7 @@ while True:
 
   if len(contours) != 0:
     for contour in contours:
-      if cv2.contourArea(contour) > 50000:
+      if cv2.contourArea(contour) > 30000:
         print("jump")
 
       if cv2.contourArea(contour) > 1000:        # evita que se pinte el contorno de fragmentos con areas muy pequeñas

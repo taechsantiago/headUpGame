@@ -691,6 +691,9 @@ while playing:
           x, y, w, h = cv2.boundingRect(contour)  # genera rectangulo de contorno de la forma
           cv2.rectangle(img, (x,y), (x + w, y + h), (0, 0, 255), 3) # muestra el rectangulo en pantalla
 
+          if y<150 and robotPlayer.UnlockJump == True:
+            robotPlayer.UP_KEY = True      #Luego de saltar se deshabilita el salto hasta una                            
+            robotPlayer.UnlockJump = False #nueva colisión con una plataforma
           if x<150:               # umbrales de decisión para el movimiento horizontal
             robotPlayer.RIGHT_KEY, robotPlayer.FACING_LEFT = True,False
           elif x>300:
