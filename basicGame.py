@@ -1,77 +1,118 @@
-#------------------------------------------------------------------------------------------------
-#------- Videojuego headUP ----------------------------------------------------------------------
-#------- Por: Santiago Taborda E   santiago.tabordae@udea.edu.co --------------------------------
-#-------      Estudiante de Ingeniería de Telecomunicaciones  -----------------------------------
-#-------      CC 1000393907, Wpp 3108983553 -----------------------------------------------------
-#------------------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------
-#-------      Emmanuel Arango A    emmanuel.arango@udea.edu.co  ---------------------------------
-#-------      Estidiante de Ingeniería de Telecomunicaciones ------------------------------------
-#-------      CC 1017214646, Wpp 3122859327 -----------------------------------------------------
-#------------------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------
-#------- Curso Básico de Procesamiento de Imágenes y Visión Artificial---------------------------
-#------- V2 Abril de 2021------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------
+#------- Videojuego headUP ---------------------------------------------------------------------------
+#------- Por: Santiago Taborda E   santiago.tabordae@udea.edu.co -------------------------------------
+#-------      Estudiante de Ingeniería de Telecomunicaciones  ----------------------------------------
+#-------      CC 1000393907, Wpp 3108983553 ----------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------
+#-------      Emmanuel Arango A    emmanuel.arango@udea.edu.co  --------------------------------------
+#-------      Estidiante de Ingeniería de Telecomunicaciones -----------------------------------------
+#-------      CC 1017214646, Wpp 3122859327 ----------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------
+#------- Curso Básico de Procesamiento de Imágenes y Visión Artificial--------------------------------
+#------- V2 Abril de 2021-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------
 
 
-#------------------------------------------------------------------------------------------------
-#-- 1. Librerías --------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------
-from pickle import FALSE
-from platform import platform
-from wsgiref.util import request_uri
-import pygame      #Conjunto de modulos de python diseñado para el desarrollo de videojuegos
-import json        #Modulo de python para el manejo de datos de formato JSON
-import numpy as np #Librería fundamental para la computación científica en Python
+#-----------------------------------------------------------------------------------------------------
+#-- 1. Librerías -------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------
+import pygame            #Conjunto de modulos de python diseñado para el desarrollo de videojuegos
+import json              #Modulo de python para el manejo de datos de formato JSON
+import numpy as np       #Librería fundamental para la computación científica en Python
 from scipy.spatial import distance #Función de la biblioteca scipy para el calculo de distancia 
+import os                #Modulo de python que permite el manejo de directorios/archivos
+from pygame import mixer #módulo pygame para cargar y reproducir sonidos
+import cv2
+import numpy as np 
 
-#------------------------------------------------------------------------------------------------
-#-- 2. Inicialización ---------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------
+#-- 2. Inicialización --------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------
+mixer.init()                #Inicializa el módulo mixer para la carga y reproducción de sonido
 pygame.init()               #Inicialización de pygame
 clock = pygame.time.Clock() #inicialización del reloj, util para las animaciones y actualización
 
-#---- Se define las dimensiones de la ventana principal del juego -------------------------------
+#---- Se define las dimensiones de la ventana principal del juego ------------------------------------
 SCREEN_WIDTH = 1024  #ancho
 SCREEN_HEIGHT = 1000 #alto
 
-#---- Se definen las VARIABLES Y CONSTANTES del juego --------------------------------------------
+#---- Se definen las VARIABLES Y CONSTANTES del juego ------------------------------------------------
 FPS = 80                #Constante que controla los frames por segundo para actualizar pantalla
 GRAVITY = 1             #Constante que simula la gravedad para el movimiento fisico
 WHITE = (255, 255, 255) #Constante de color
 BLACK = (0, 0, 0)       #Constante de color
+BACKGROUND =(47, 45, 60)#Constante de color
 PLATFOR_NUMBER = 10     #Constante que permite decidir el número de plataformas en pantalla
 SCROLLING_LIMIT = 300   #Constante para determinar cuando se activa el desplazamiento de pantalla
 GAME_OVER = False       #Constante que permite determinar el fin de la partida
 FONT_SMALL = pygame.font.SysFont('Lucida Sans',20, bold=True) #Constante de letra tamaño pequeño
 FONT_BIG = pygame.font.SysFont('Lucida Sans',24, bold=True)   #Constante de letra tamaño grande
 Scrolling = 0           #No es una constante, desplaza las plataformas
-Scrolling_PlfPosy = []  #No es una constante, permite evitar que las plataformas se generen con
-                        #una misma coordenada de acuerdo al eje Y
-Score = 0               #No es una constante, permite llevar cuenta del puntaje alcanzado
+Score = -PLATFOR_NUMBER #No es una constante, permite llevar cuenta del puntaje alcanzado
+High_score = 0          #No es una constante, permite llevar cuenta del puntaje más alto 
 Fade_background = 0     #No es una constante, permite la visualización correcta del game over
 
-#---- Se crea la ventana principal del juego ----------------------------------------------------
+#---- Se crea la ventana principal del juego ---------------------------------------------------------
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))#creación de la ventana pygame
 pygame.display.set_caption('headUpGame')                       #cambio del titulo de la ventana
 
-#---- Se cargan las imagenes y se configura para mantener la posible transparencia de la --------
-#---- imagen png cargada ------------------------------------------------------------------------
+#---- Se cargan las imagenes y se configura para mantener la posible transparencia de la -------------
+#---- imagen png cargada -----------------------------------------------------------------------------
 backGroundImage = pygame.image.load('./assets/background/space2.jpg').convert_alpha()#Fondo
 platformImage = pygame.image.load('./assets/platform/Tile.png').convert_alpha()#Plataformas
 
-#---- Función para los letreros en pantalla -----------------------------------------------------
+#---- Se carga la musica y efectos de sonido ---------------------------------------------------------
+#Musica general
+pygame.mixer.music.load('./music/The_Astronaut_loop.wav')#Carga un archivo de musica y lo preparará
+pygame.mixer.music.set_volume(0.1)                       #Modifica el volumen para la reproducción
+pygame.mixer.music.play(-1, 0.0, )                       #Reproduce el archivo de musica cargado
+#Efecto de sonido para el Game Over
+gameOverFx = pygame.mixer.Sound('./music/game_over.wav') #Crear un nuevo objeto de sonido desde un archivo
+gameOverFx.set_volume(0.5)                           #Modifica el volumen para la reproducción
+#Efecto de sonido para el enemigo
+enemyFx = pygame.mixer.Sound('./music/scream.wav') #Crear un nuevo objeto de sonido desde un archivo
+enemyFx.set_volume(0.1)                            #Modifica el volumen para la reproducción
+
+#---- Función para los letreros en pantalla ----------------------------------------------------------
 def screenDrawText(stringText, fontText, colorText, posXText, posYText):
     imageText = fontText.render(stringText, True, colorText)
     screen.blit(imageText, (posXText, posYText))
 
-#------------------------------------------------------------------------------------------------
-#-- 3. Sprites ----------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------
+#---- Función para los panel de score en pantalla ----------------------------------------------------
+def screenDrawPanel():
+    pygame.draw.rect(screen, BACKGROUND, (0, 0, SCREEN_WIDTH, 30))
+    pygame.draw.line(screen, WHITE, (1,30), (SCREEN_WIDTH, 30), 1)
+    screenDrawText('SCORE : '+str(Score)+' | HIGH SCORE : '+str(High_score), FONT_SMALL, WHITE, 10, 2)
+
+#---- Inicialización de variables para reconocimiento ------------------------------------------------
+
+# Lower es el umbral bajo del color seleccionado, Upper es el umbral superior, esto otorga cierta flexibilidad
+lower = np.array([15,150,20])   #[HUE, SATURATION, VALUE] el primero valor es el color entre (0-180)
+upper = np.array([35,255,255])  #el segundo valor es que tanta saturación de color se espera (de 150 a 255 es el ideal)
+                                #el tercer valor es la referencia al brillo del color selección
+
+video = cv2.VideoCapture(0)     # guarda la captura de la webcam en la variable
+
+
+#---- Determinar si existe un score más alto o no ----------------------------------------------------
+#El score se almacena en un archivo .txt, si dicho archivo existe, se recupera el score pero si no
+#existe, se define en cero el score más alto
+if os.path.exists('highScore.txt'): 
+    with open('highScore.txt', 'r') as file:
+        High_score = int(file.read())
+else:
+    High_score = 0
+
+#----------------------------------------------------------------------------------------------------
+#-- 3. Sprites --------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------
 class sprites:
     #Clase para la carga y la definición de las imagenes que se usan como sprites en animación
-    def __init__(self, filename):
+    def __init__(self, filename, location):
+        self.locationFile = location
+
         #Lectura del archivo JSON para determinar los parametros del sprite
         self.filename = filename
         with open(self.filename) as f: #Se abre el archivo para su lectura
@@ -83,7 +124,7 @@ class sprites:
         downsizing = self.data[imageName]['downsizing'] #valores para el ajuste del rectangulo
         offset = self.data[imageName]['offset']         #valores para el offset de la imagen
 
-        image = pygame.image.load('./assets/robot/'+imageName).convert_alpha()
+        image = pygame.image.load(self.locationFile+imageName).convert_alpha()
 
         #Tener en cuenta que se redimensiona la imagen del personaje para efectos esteticos y se
         #Asigna a la instancia creada en la inicialización
@@ -103,14 +144,14 @@ class sprites:
 
         return returnList
 
-#------------------------------------------------------------------------------------------------
-#-- 4. Personaje --------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------
+#-- 4. Personaje ------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------
 class Player(pygame.sprite.Sprite):
     #Se hace uso de pygame.sprite.Sprite que facilita tanto las colisiones como el movimiento y
     #el manejo de sprites (cambios y transiciones)
 
-    #---- Inicialización del personaje ----------------------------------------------------------
+    #---- Inicialización del personaje --------------------------------------------------------------
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)#constructor de la clase padre
         self.LEFT_KEY, self.RIGHT_KEY, self.FACING_LEFT, self.UP_KEY = False, False, False, False
@@ -131,16 +172,14 @@ class Player(pygame.sprite.Sprite):
         self.offsetY = 0
         self.UnlockJump = True #Variable que habilita el salto del perosnaje
 
+    #---- Dibujo en pantalla del personaje ----------------------------------------------------------
     def draw(self, display):
         #---- Actualización del personaje en la pantalla ------------------------------------------
         #Se utilizan las coordenadas del rectangulo para el dibujo del personaje con un offset
         #el offset evita problemas de colisión, es el rectangulo el que se toma en cuenta
-        #screen.blit(image, (rect.x-offset['x'], rect.y-offset['y']))
         display.blit(self.currentImage, (self.rect.x-self.offsetX, self.rect.y-self.offsetY))
 
-        #BORRAR SIGUIENTE LINEA PARA ENTREGAR
-        pygame.draw.rect(display, WHITE, self.rect, 2)#se dibuja el rectangulo BORRAR PARA ENTREGAR
-
+    #---- Movimiento y actualización del personaje --------------------------------------------------               
     def moving(self):
         #SE DEBE COMENTAR MEJOR EL MOVIMIENTO VERTICAL
         
@@ -162,9 +201,6 @@ class Player(pygame.sprite.Sprite):
         if (self.rect.x+58) + self.velocityX > SCREEN_WIDTH:
             self.velocityX = SCREEN_WIDTH - (self.rect.x+58)
         
-        #if self.rect.bottom+self.velocityY > SCREEN_HEIGHT:
-        #    self.velocityY = -20
-
         #---- Reconocimiento colisión con plataformas ----------------------------------------------
         for platform_i in platformsGroup: #Se recorren las plataformas para identificar colisión
             #Se identifica colisión con el uso de rect.colliderect entre la plataforma y un rect
@@ -181,6 +217,8 @@ class Player(pygame.sprite.Sprite):
                         self.rect.bottom = platform_i.rect.top 
                         self.UnlockJump = True #Permite saltar luego de estar sobre una plataforma
                         self.velocityY = 0
+                        if platform_i.getHorizontalType():
+                            self.rect.x += platform_i.getVelocityX()
 
         #---- Reconocimiento para activar desplazamiento --------------------------------------------
         Scrolling = 0
@@ -201,8 +239,11 @@ class Player(pygame.sprite.Sprite):
         self.setState()
         self.animate()
 
+        self.mask = pygame.mask.from_surface(self.currentImage)
+
         return Scrolling
 
+    #---- Cambio del estado para permitir la animación del personaje --------------------------------               
     def setState(self):
         
         self.state = 'idle' #Estado predeterminado del personaje para la asignación de la animación
@@ -217,29 +258,33 @@ class Player(pygame.sprite.Sprite):
             self.state = 'moving right'
         elif (self.velocityX < 0):      #Animación de movimiento a la izquierda
             self.state = 'moving left'
-            
+    
+    #---- Animación del personaje -------------------------------------------------------------------               
     def animate(self):
-        #SE DEBE COMENTAR MEJOR
-        
-        currentTime = pygame.time.get_ticks()
+        currentTime = pygame.time.get_ticks() #Se obtiene el tiempo actual de la ventana
+
         if (self.state == 'idle'):
             #se identifica cada 200 milisegundos para efectuar la actualización de los sprites
             if ((currentTime - self.lastFrame) > 300):
-                self.lastFrame = currentTime #se vuelve a cambiar el tiempo con el tiempo actual
+                self.lastFrame = currentTime #se vuelve a cambiar el frame anterior con el tiempo actual
+
                 #se identifica cual es el sprite siguiente en la animación
                 #el operador % permite que se cambie el indice del sprite como un loop
                 #si la lista de sprites tiene 4 posiciones, currentFrame varia entre 0 y 3
                 self.currentFrame = ((self.currentFrame+1)%len(self.idleLeftFrames))
                 if self.FACING_LEFT:
+                    #Se cambia la imagen deacuerdo al sprite escogido segun el tiempo
                     self.currentImage = self.idleLeftFrames[self.currentFrame]
-                    
+
+                    #Se actualiza el rect correspondiente para cada sprite
                     self.rect.update(self.rect.x, self.rect.y, self.idleLeftRects[self.currentFrame][0], self.idleLeftRects[self.currentFrame][1])
                     self.offsetX = self.idleLeftOffset[self.currentFrame]['x']
                     self.offsetY = self.idleLeftOffset[self.currentFrame]['y']
-
                 elif not self.FACING_LEFT:
+                    #Se cambia la imagen deacuerdo al sprite escogido segun el tiempo
                     self.currentImage = self.idleRightFrames[self.currentFrame]
                     
+                    #Se actualiza el rect correspondiente para cada sprite
                     self.rect.update(self.rect.x, self.rect.y, self.idleRightRects[self.currentFrame][0], self.idleRightRects[self.currentFrame][1])                    
                     self.offsetX = self.idleRightOffset[self.currentFrame]['x']
                     self.offsetY = self.idleRightOffset[self.currentFrame]['y']
@@ -248,9 +293,17 @@ class Player(pygame.sprite.Sprite):
             #para el salto se hace cada 100 milisegundos para una actualización
             #más fluida para el movimiento de salto
             if ((currentTime - self.lastFrame) > 150):
-                self.lastFrame = currentTime
+                self.lastFrame = currentTime #se vuelve a cambiar el frame anterior con el tiempo actual
+
+                #se identifica cual es el sprite siguiente en la animación
+                #el operador % permite que se cambie el indice del sprite como un loop
+                #si la lista de sprites tiene 4 posiciones, currentFrame varia entre 0 y 3
                 self.currentFrame = ((self.currentFrame+1)%len(self.jumpLeftFrames))
+
+                #Se cambia la imagen deacuerdo al sprite escogido segun el tiempo
                 self.currentImage = self.jumpLeftFrames[self.currentFrame]
+
+                #Se actualiza el rect correspondiente para cada sprite
                 self.rect.update(self.rect.x, self.rect.y, self.jumpLeftRects[self.currentFrame][0], self.jumpLeftRects[self.currentFrame][1])
                 self.offsetX = self.jumpLeftOffset[self.currentFrame]['x']
                 self.offsetY = self.jumpLeftOffset[self.currentFrame]['y']
@@ -259,36 +312,54 @@ class Player(pygame.sprite.Sprite):
             #para el salto se hace cada 100 milisegundos para una actualización
             #más fluida para el movimiento de salto
             if ((currentTime - self.lastFrame) > 150):
-                self.lastFrame = currentTime
+                self.lastFrame = currentTime #se vuelve a cambiar el frame anterior con el tiempo actual
+
+                #se identifica cual es el sprite siguiente en la animación
+                #el operador % permite que se cambie el indice del sprite como un loop
+                #si la lista de sprites tiene 4 posiciones, currentFrame varia entre 0 y 3
                 self.currentFrame = ((self.currentFrame+1)%len(self.jumpRightFrames))
+
+                #Se cambia la imagen deacuerdo al sprite escogido segun el tiempo
                 self.currentImage = self.jumpRightFrames[self.currentFrame]
+
+                #Se actualiza el rect correspondiente para cada sprite
                 self.rect.update(self.rect.x, self.rect.y, self.jumpRightRects[self.currentFrame][0], self.jumpRightRects[self.currentFrame][1])
                 self.offsetX = self.jumpRightOffset[self.currentFrame]['x']
                 self.offsetY = self.jumpRightOffset[self.currentFrame]['y']
                
         else:
-            #en este caso se identifica cada 100 milisegundos pues requiere de una actualización
+            #en este caso se identifica cada 150 milisegundos pues requiere de una actualización
             #más fluida para el movimiento caminando
             if ((currentTime - self.lastFrame) > 150):
-                self.lastFrame = currentTime
+                self.lastFrame = currentTime #se vuelve a cambiar el frame anterior con el tiempo actual
+
+                #se identifica cual es el sprite siguiente en la animación
+                #el operador % permite que se cambie el indice del sprite como un loop
+                #si la lista de sprites tiene 4 posiciones, currentFrame varia entre 0 y 3
                 self.currentFrame = ((self.currentFrame+1)%len(self.walkLeftFrames))
-                if self.state == 'moving left':
+
+                if self.state == 'moving left':   #Se identifica si el movimiento es para la izquierda
+                    #Se cambia la imagen deacuerdo al sprite escogido segun el tiempo
                     self.currentImage = self.walkLeftFrames[self.currentFrame]
 
+                    #Se actualiza el rect correspondiente para cada sprite
                     self.rect.update(self.rect.x, self.rect.y, self.walkLeftRects[self.currentFrame][0], self.walkLeftRects[self.currentFrame][1])
                     self.offsetX = self.walkLeftOffset[self.currentFrame]['x']
                     self.offsetY = self.walkLeftOffset[self.currentFrame]['y']
 
-                elif self.state == 'moving right':
+                elif self.state == 'moving right': #se identifica si el movimiento es para la derecha
+                    #Se cambia la imagen deacuerdo al sprite escogido segun el tiempo
                     self.currentImage = self.walkRightFrames[self.currentFrame]
 
+                    #Se actualiza el rect correspondiente para cada sprite
                     self.rect.update(self.rect.x, self.rect.y, self.walkRightRects[self.currentFrame][0], self.walkRightRects[self.currentFrame][1])
                     self.offsetX = self.walkRightOffset[self.currentFrame]['x']
                     self.offsetY = self.walkRightOffset[self.currentFrame]['y']
-           
+
+    #---- Carga de los sprites del personaje --------------------------------------------------------       
     def loadFrames(self):
         #SE DEBE COMENTAR
-        idleSpritesRobot = sprites('./assets/robot/idle/idle.json')
+        idleSpritesRobot = sprites('./assets/robot/idle/idle.json', './assets/robot/')
         idleFramesRect = [idleSpritesRobot.spriteDimensions("idle/Idle_01.png"),
                            idleSpritesRobot.spriteDimensions("idle/Idle_02.png"),
                            idleSpritesRobot.spriteDimensions("idle/Idle_03.png"),
@@ -312,7 +383,7 @@ class Player(pygame.sprite.Sprite):
             self.idleRightFrames.append(pygame.transform.flip(frame, True, False))
 
 
-        walkLeftSpritesRobot = sprites('./assets/robot/walk/walk.json')
+        walkLeftSpritesRobot = sprites('./assets/robot/walk/walk.json', './assets/robot/')
         walkFramesRect = [walkLeftSpritesRobot.spriteDimensions("walk/Walk_01.png"),
                            walkLeftSpritesRobot.spriteDimensions("walk/Walk_02.png"),
                            walkLeftSpritesRobot.spriteDimensions("walk/Walk_03.png"),
@@ -345,7 +416,7 @@ class Player(pygame.sprite.Sprite):
         for frame in self.walkLeftFrames:
             self.walkRightFrames.append(pygame.transform.flip(frame, True, False))
 
-        jumpSpritesRobot = sprites('./assets/robot/jump/jump.json')
+        jumpSpritesRobot = sprites('./assets/robot/jump/jump.json', './assets/robot/')
         jumpFramesRect = [jumpSpritesRobot.spriteDimensions("jump/Jump_01.png"),
                            jumpSpritesRobot.spriteDimensions("jump/Jump_02.png"),
                            jumpSpritesRobot.spriteDimensions("jump/Jump_03.png"),
@@ -378,36 +449,177 @@ class Player(pygame.sprite.Sprite):
         for frame in self.jumpLeftFrames:
             self.jumpRightFrames.append(pygame.transform.flip(frame, True, False))
 
-#------------------------------------------------------------------------------------------------
-#-- 5. Plataformas ------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------
+#-- 5. Enemigo --------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------
+class Enemy(pygame.sprite.Sprite):
+    #Se hace uso de pygame.sprite.Sprite que facilita tanto las colisiones como el movimiento y
+    #el manejo de sprites (cambios y transiciones)
 
-#---- Clase para la creación de cada plataforma como objeto -------------------------------------
+    #---- Inicialización del enemigo ----------------------------------------------------------------
+    def __init__(self, posY):
+        pygame.sprite.Sprite.__init__(self)#constructor de la clase padre
+        self.loadFrames()                  #se cargan las diferentes images que serán los sprites
+
+        #se inicializan las variables que se utilizan en el personaje
+        self.rectPosY = posY   #Coordenadas iniciales Y de acuerdo al parametro proporcionado
+
+        self.direction = np.random.choice([-1,1],1)[0] #Se escoge dirección, movimiento horizontal
+        if self.direction == 1: #Se identifica la dirección del movimiento del enemigo
+            self.rectPosX = -20 #Si es para la derecha, inicia en la parte izquierda de la ventana
+            self.state = 'moving right'
+        else:                   #Si es para la izquierda, inicia en la parte derecha de la ventana
+            self.rectPosX = SCREEN_WIDTH+20
+            self.state = 'moving left'
+
+        self.rect = pygame.Rect(self.rectPosX, self.rectPosY, self.walkLeftRects[0][0], self.walkLeftRects[0][1])
+        self.rect.center = (self.rectPosX,self.rectPosY)#Se modifica el centro del rectangulo a las coordenadas
+
+        self.currentFrame = 0
+        self.lastFrame = 0
+        self.image = self.walkLeftFrames[0]
+
+    #---- Cambio del estado para permitir la animación del enemigo ----------------------------------               
+    def setState(self):
+        if (self.direction > 0):      #Animación de movimiento a la derecha
+            self.state = 'moving right'
+        elif (self.direction < 0):      #Animación de movimiento a la izquierda
+            self.state = 'moving left'
+
+    #---- Animación del enemigo ---------------------------------------------------------------------               
+    def animate(self):
+        currentTime = pygame.time.get_ticks() #Se obtiene el tiempo actual de la ventana
+
+        #en este caso se identifica cada 100 milisegundos pues requiere de una actualización
+        #más fluida para el desplazamiento del enemigo
+        if ((currentTime - self.lastFrame) > 100):
+            self.lastFrame = currentTime #Se actualiza el frame con el tiempo actual
+            #se identifica cual es el sprite siguiente en la animación
+            #el operador % permite que se cambie el indice del sprite como un loop
+            #si la lista de sprites tiene 4 posiciones, currentFrame varia entre 0 y 3
+            self.currentFrame = ((self.currentFrame+1)%len(self.walkLeftFrames)) 
+            if self.state == 'moving left':   #Se identifica si el movimiento es para la izquierda
+                #Se cambia la imagen deacuerdo al sprite escogido segun el tiempo
+                self.image = self.walkLeftFrames[self.currentFrame]
+
+                #Se actualiza el rect correspondiente para cada sprite
+                self.rect.update(self.rect.x, self.rect.y, 
+                self.walkLeftRects[self.currentFrame][0], self.walkLeftRects[self.currentFrame][1])
+                
+
+            elif self.state == 'moving right': #se identifica si el movimiento es para la derecha
+                #Se cambia la imagen deacuerdo al sprite escogido segun el tiempo
+                self.image = self.walkRightFrames[self.currentFrame]
+
+                #Se actualiza el rect correspondiente para cada sprite
+                self.rect.update(self.rect.x, self.rect.y, 
+                self.walkRightRects[self.currentFrame][0], self.walkRightRects[self.currentFrame][1])
+                
+    #---- Actualización y movimiento del enemigo --------------------------------------------------
+    def update(self, Scrolling):
+        enemyFx.play() #Se reproduce el efecto de sonido para el enemigo
+        #---- Movimiento vertical -----------------------------------------------------------------
+        self.rect.y += Scrolling          #El movimiento de los enemigos en Y
+
+        #---- Movimiento horizontal ---------------------------------------------------------------
+        self.rect.x += self.direction * np.random.randint(2,4) #El movimiento de los enemigos en X
+
+        #Verificación para determinar si se debe eliminar un enemigo cuando sale de pantalla
+        if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH:
+            self.kill() #Se elimina el enemigo al salir de pantalla
+
+        self.setState()
+        self.animate()
+    
+    #---- Carga de los sprites del enemigo ----------------------------------------------------------
+    def loadFrames(self):
+        #Se utiliza un archivo json para recuperar los datos de cada sprite, pues dependiendo
+        #de ello cuenta con un tamaño distinto para que el rect siempre este ajustado y se hace
+        #uso de la clase sprites diseñada anteriormente
+        walkLeftSpritesEnemy = sprites('./assets/enemy/walk/walk.json', './assets/enemy/')
+        walkFramesRect = [walkLeftSpritesEnemy.spriteDimensions("walk/walk_01.png"),
+                           walkLeftSpritesEnemy.spriteDimensions("walk/walk_02.png"),
+                           walkLeftSpritesEnemy.spriteDimensions("walk/walk_03.png"),
+                           walkLeftSpritesEnemy.spriteDimensions("walk/walk_04.png"),
+                           walkLeftSpritesEnemy.spriteDimensions("walk/walk_05.png"),
+                           walkLeftSpritesEnemy.spriteDimensions("walk/walk_06.png"),
+                           walkLeftSpritesEnemy.spriteDimensions("walk/walk_07.png"),
+                           walkLeftSpritesEnemy.spriteDimensions("walk/walk_08.png")]
+        walkFramesRect = np.array(walkFramesRect, dtype=object)
+
+        #Se indexa dependiendo de la información requerida
+        self.walkLeftFrames = walkFramesRect[:, 0] #Las imagenes correspondientes a los sprites
+        self.walkLeftRects  = walkFramesRect[:, 1] #El rect creado para cada imagen de sprite
+        self.walkLeftOffset = walkFramesRect[:, 2] #El offset necesario para centrar el rect
+
+        #Se hace necesario utilizar un efecto espejo para que los sprites se orienten a la derecha
+        self.walkRightFrames = []
+        self.walkRightRects  = walkFramesRect[:, 1]
+        self.walkRightOffset  = walkFramesRect[:, 2]
+        for frame in self.walkLeftFrames:
+            self.walkRightFrames.append(pygame.transform.flip(frame, True, False))
+
+#----------------------------------------------------------------------------------------------------
+#-- 6. Plataformas ----------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------
+
+#---- Clase para la creación de cada plataforma como objeto -----------------------------------------
 class Platform(pygame.sprite.Sprite): 
     #Se hace uso de pygame.sprite.Sprite que facilita tanto las colisiones como el movimiento y
     #el manejo de sprites (cambios y transiciones). para este caso se puede usar los grupos de 
     #pygame que optimizan la utilización recursiva de la clase
 
     #---- Inicialización de la plataforma -------------------------------------------------------
-    def __init__(self, x, y, width): 
+    def __init__(self, x, y, width, moving): 
         pygame.sprite.Sprite.__init__(self) #constructor de la clase padre
 
+        self.width = width #Inicilización del tamaño de la plataforma
+
         #se carga la imagen que se utiliza para la plataforma, con longitud variable
-        self.image = pygame.transform.scale(platformImage, (width, 30)) 
+        self.image = pygame.transform.scale(platformImage, (self.width, 30)) 
         self.rect = self.image.get_rect()#se obtiene el rectangulo para la imagen correspondiente
 
         #Inicialización de coordenadas xy para la plataforma
         self.rect.x = x
         self.rect.y = y
 
+        self.moving = moving  #Se inicializa el tipo de plataforma, movimiento horizontal
+        self.counterMoving = np.random.randint(0,5)    #Determina el limite movimiento horizontal
+        self.direction = np.random.choice([-1,1],1)[0] #Se escoge dirección, movimiento horizontal
+        self.velocityX = 0                             #Inicialización de la velocidad 
+        self.accelerationX = np.random.randint(2,6)    #Inicialización random de la aceleración
+        self.limitMoving = np.random.randint(200,400)  #Inicialización el limite del movimiento
+
+    #---- Actualización y movimiento de la plataforma --------------------------------------------
     def update(self, Scrolling):
-        self.rect.y += Scrolling              #El movimiento de las plataformas se hace en Y
+        #---- Movimiento vertical -----------------------------------------------------------------
+        self.rect.y += Scrolling          #El movimiento de las plataformas en Y
+
+        #---- Movimiento horizontal ---------------------------------------------------------------
+        if self.moving:                   #Si la plataforma es de tipo movimiento horizontal 
+            self.velocityX = self.direction * self.accelerationX #la velocidad es aleatoria       
+            self.rect.x += self.velocityX #se modifica su posición en X
+            self.counterMoving += self.accelerationX#Se incrementa para permitir limitar movimiento
+        if self.counterMoving >= self.limitMoving:#Si la plataforma se ha desplazado más de un numero
+            self.direction *= -1                  #aleatorio, se invierte el movimiento
+            self.counterMoving = 0
+
+        #---- Reconocimiento de limites de pantalla para movimiento horizontal --------------------       
+        if self.rect.x + self.velocityX < 0 or (self.rect.x+self.width) + self.velocityX > SCREEN_WIDTH: 
+            self.direction *= -1   #Al toparse con algun limite horizontal se invierte el movimiento
+            self.counterMoving = 0
 
         #Verificación para determinar si se debe eliminar una plataforma cuando sale de pantalla
         if self.rect.top > SCREEN_HEIGHT:
-            self.kill()                       #Se elimina la plataforma al salir de pantalla
+            self.kill()                   #Se elimina la plataforma al salir de pantalla
+    
+    def getHorizontalType(self):
+        return self.moving
 
-#---- Función para garantizar que el espacio entre plataforma sea el adecuado -------------------
+    def getVelocityX(self):
+        return self.velocityX
+
+#---- Función para garantizar que el espacio entre plataforma sea el adecuado -----------------------
 def xCoordinate(prevPlatform, nextCoordX, nextWidth):
     prevCoordX = prevPlatform.rect.x    #Se recupera la posición x de la plataforma anterior
     prevWidth = prevPlatform.rect.width #Se recupera el tamaño de la plataforma anterior
@@ -433,27 +645,75 @@ def xCoordinate(prevPlatform, nextCoordX, nextWidth):
                 control = False #Si no supera la distancia, se puede terminar el ciclo
     return nextCoordX #Se retorna la coordenada X que cumple las consideraciones
 
-#------------------------------------------------------------------------------------------------
-#-- 6. Instancias -------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------
-robotPlayer = Player() #Creación del personaje
+#----------------------------------------------------------------------------------------------------
+#-- 7. Instancias -----------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------
 
-#---- Creación de plataformas -------------------------------------------------------------------
+#---- Creación del personaje ------------------------------------------------------------------------
+robotPlayer = Player()
+
+#---- Creación de enemigos --------------------------------------------------------------------------
+enemiesGroup = pygame.sprite.Group()  #Instancia del uso de pygame groups
+
+#---- Creación de plataformas -----------------------------------------------------------------------
 platformsGroup = pygame.sprite.Group()#Instancia del uso de pygame groups
 
 #Plataforma inicial con coordenadas aproximadamente en la mitad de la ventana
-platformI = Platform((SCREEN_WIDTH-150)//2, SCREEN_HEIGHT-100, 150)
-Scrolling_PlfPosy.append(SCREEN_HEIGHT-100)#Se agrega la coordenada de la plataforma inicial
-platformsGroup.add(platformI)        #Se agrega la plataforma creada al grupo de plataformas
+platformI = Platform((SCREEN_WIDTH-150)//2, SCREEN_HEIGHT-100, 150, False)
+platformsGroup.add(platformI) #Se agrega la plataforma creada al grupo de plataformas
+Score += 1                    #Cada que se agregue una plataforma, se incrementa el score en 1
 
-#------------------------------------------------------------------------------------------------
-#-- 8. Funcionamiento e integración -------------------------------------------------------------
-#------------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------
+#-- 8. Funcionamiento e integración -----------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------
 
-#---- Se define el ciclo con el cual se evita el cierre de la ventana principal creada ----------
+#---- Se define el ciclo con el cual se evita el cierre de la ventana principal creada --------------
 playing = True #Variable de control para el ciclo mencionado
 while playing:
-    #------ Actualización del reloj por frame ---------------------------------------------------
+
+  #---------------------------------------- reconocimiento de objetos opencv --------------------------------------
+    
+    success, img = video.read()   # toma de valores del video capturado
+    image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)  #conversión de la imagen tomada por la camara
+    mask = cv2.inRange(image, lower, upper)       #encuentra el color escogido en las imagenes de la camara
+
+
+  #----------------------------------------- 2. contorno de la figura ---------------------------------------------
+  #
+  # las siguienets encuentra las coordenadas del color detectado, CHAIN_APPROX_SIMPLE permite tomar los puntos necesarios
+  # del contorno no toma cada punto de las coordenadas, RETR_EXTERNAL toma el contorno externo de la forma con el color
+
+    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)  
+
+    if len(contours) != 0:
+      for contour in contours:
+        if cv2.contourArea(contour) > 1000:        # evita que se pinte el contorno de fragmentos con areas muy pequeñas
+          x, y, w, h = cv2.boundingRect(contour)  # genera rectangulo de contorno de la forma
+          cv2.rectangle(img, (x,y), (x + w, y + h), (0, 0, 255), 3) # muestra el rectangulo en pantalla
+
+          if y<150 and robotPlayer.UnlockJump == True:
+            robotPlayer.UP_KEY = True      #Luego de saltar se deshabilita el salto hasta una                            
+            robotPlayer.UnlockJump = False #nueva colisión con una plataforma
+          if x<150:               # umbrales de decisión para el movimiento horizontal
+            robotPlayer.RIGHT_KEY, robotPlayer.FACING_LEFT = True,False
+          elif x>300:
+            robotPlayer.LEFT_KEY, robotPlayer.FACING_LEFT = True,True
+          else:
+            robotPlayer.LEFT_KEY = False
+            robotPlayer.RIGHT_KEY = False
+
+
+  #-------- se puede borrar luego de terminado -------------------------------------
+  #cv2.imshow("mask", mask)    # muestra en pantalla la identificación del color
+    cv2.imshow("webcam", img)   # muestra los fotogramas captados por la camara
+
+    #cv2.waitKey(10)              # tiempo entre captura de fotogramas
+
+    #------------ Reconocimiento de movimientos por camara con opencv-----------------------------------
+
+
+
+    #------ Actualización del reloj por frame -------------------------------------------------------
     clock.tick(FPS) #se realiza cada 60 segundos la actualización en pantalla (para animaciones)
 
     if GAME_OVER == False:
@@ -466,6 +726,7 @@ while playing:
 
         #------ Creación de las plataformas ---------------------------------------------------------
         if len(platformsGroup) < PLATFOR_NUMBER:
+            Score += 1 #Cada que se agregue una plataforma, se incrementa el score en 1
             platformWidth = np.random.randint(150,250) #Se genera un tamaño aleatorio
 
             #Se asegura el espaciamiento no supera el alcance del salto con la función xCoordinate
@@ -474,58 +735,109 @@ while playing:
             
             #Apartir de la ultima plataforma creada se genera una nueva coordenada Y
             platformY = platformI.rect.y - np.random.randint(200,300)
-            
-            platformI = Platform(platformX, platformY, platformWidth)#Se crea una plataforma
-            platformsGroup.add(platformI)                            #Se agrega plataforma al grupo  
 
-        #------ Actualización y dibujo de plataformas -----------------------------------------------
+            #Con animos de generar mayor dificultad, se generan plataformas con movimiento horizontal
+            platformType = np.random.choice([0,1],1)[0] #Se escoge aleatoriamente, 0 False 1 True
+            if platformType and Score > 5:
+                #Se crea una plataforma con movimiento horizontal
+                platformI = Platform(platformX, platformY, platformWidth, True)
+            else:
+                #Se crea una plataforma sin movimiento horizontal
+                platformI = Platform(platformX, platformY, platformWidth, False)
+            platformsGroup.add(platformI) #Se agrega plataforma al grupo  
+        #------ Actualización y dibujo de plataformas --------------------------------------------------
         platformsGroup.update(Scrolling)
         platformsGroup.draw(screen)
 
-        #------ Inicialización del salto, para evitar vuelo con tecla sostenida ---------------------
+        #------ Creación de los enemigos ---------------------------------------------------------------
+        if len(enemiesGroup) == 0 and Score > 10:
+            enemyI = Enemy(np.random.randint(50,400))
+            enemiesGroup.add(enemyI)
+        #------ Actualización y dibujo de enemigos -----------------------------------------------------
+        enemiesGroup.update(Scrolling)
+        enemiesGroup.draw(screen)
+
+        #------ Dibujo del panel para el score en pantalla ---------------------------------------------
+        screenDrawPanel()
+
+        #------ Inicialización del salto, para evitar vuelo con tecla sostenida ------------------------
         robotPlayer.UP_KEY = False 
 
-        #------ Reconocimiento de fin de juego (fin de partida) -------------------------------------
+        #------ Reconocimiento de fin de juego (fin de partida) ----------------------------------------
         if robotPlayer.rect.top > SCREEN_HEIGHT: #Si el rect del personaje sale de pantalla en caida
             GAME_OVER = True                     #se acaba el juego
+            enemyFx.stop()                       #Se pausa el sonido del enemigo para dar paso game over
+            gameOverFx.play()                    #Se reproduce el efecto de sonido para game over
+
+        #Si el personaje colisiona con algún enemigo, se acaba el juego. En spritecollide se usa False
+        #para no eliminar el sprite una vez se identifica la colisión
+        if  pygame.sprite.spritecollide(robotPlayer, enemiesGroup, False):
+            #El tipo de colisión con los enemigos es por medio de una mascara, esto para asegurarse de que
+            #la colisión no se active si los rect se tocan, si no si la imagen colisiona
+            if pygame.sprite.spritecollide(robotPlayer, enemiesGroup, False, pygame.sprite.collide_mask):
+                GAME_OVER = True
+                enemyFx.stop()               #Se pausa el sonido del enemigo para dar paso al game over
+                gameOverFx.play()            #Se reproduce el efecto de sonido para game over
     else:
+        #------ Aviso en pantalla GAME OVER  -----------------------------------------------------------
         #Se muestra en pantalla que el juego ha terminado, el puntaje y la instrucción de reinicio
+
+        robotPlayer.LEFT_KEY = False   #Permite que el personaje inicie completamente inmovil
+        robotPlayer.RIGHT_KEY = False
+
         if Fade_background < SCREEN_HEIGHT:
             Fade_background += 12
             pygame.draw.rect(screen, BLACK, (0,0, SCREEN_WIDTH, Fade_background))
-        screenDrawText('~ GAME OVER ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 300)
-        screenDrawText('~ SCORE: '+str(Score)+' ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 350)
-        screenDrawText('~ PRESS ENTER ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 400)
+        else:
+            screenDrawText('~  GAME OVER  ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 300)
+            screenDrawText('~  SCORE: '+str(Score)+'  ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 350)
+            screenDrawText('~  HIGH SCORE: '+str(High_score)+'  ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 400)
+            screenDrawText('~  PRESS ENTER  ~', FONT_BIG, WHITE, (SCREEN_WIDTH-290)//2, 450)
 
-        #Si el usuario presiona enter, se reinicia el juego
-        key = pygame.key.get_pressed()
-        if key[pygame.K_KP_ENTER]:
-            #------ Reinicio de variables  ------------------------------------------------------
-            GAME_OVER = False
-            Scrolling = 0
-            Scrolling_PlfPosy = []
-            Score = 0
-            Fade_background = 0
-            #------ Reubicación del personaje  --------------------------------------------------
-            robotPlayer.rect.center = ((SCREEN_WIDTH-10)//2,SCREEN_HEIGHT-200)
-            #------ Reinicio de plataformas  ----------------------------------------------------
-            platformsGroup.empty() #Se eliminan todas las plataformas presentes en el grupo
+            #------ Actualización de puntaje más alto  -------------------------------------------------
+            if Score > High_score: #Se reconoce si el score actual es más alto que el score más alto
+                High_score = Score #En caso de ser más alto, se reemplaza
+                with open('highScore.txt', 'w') as file: #Se debe almacenar y para ello se usa un txt
+                    file.write(str(High_score))
 
-            #Plataforma inicial con coordenadas aproximadamente en la mitad de la ventana
-            platformI = Platform((SCREEN_WIDTH-150)//2, SCREEN_HEIGHT-100, 150)
-            Scrolling_PlfPosy.append(SCREEN_HEIGHT-100)#Se agrega la coordenada
-            platformsGroup.add(platformI)        #Se agrega la plataforma al grupo de plataformas
+            #Si el usuario presiona enter, se reinicia el juego
+            key = pygame.key.get_pressed()
+            if key[pygame.K_KP_ENTER]:
+                #------ Reinicio de variables  ---------------------------------------------------------
+                GAME_OVER = False
+                Scrolling = 0
+                Scrolling_PlfPosy = []
+                Score = 0
+                Fade_background = 0
+                #------ Reubicación del personaje  -----------------------------------------------------
+                robotPlayer.rect.center = ((SCREEN_WIDTH-10)//2,SCREEN_HEIGHT-200)
+                #------ Reinicio de plataformas  -------------------------------------------------------
+                platformsGroup.empty() #Se eliminan todas las plataformas presentes en el grupo
+                #Plataforma inicial con coordenadas aproximadamente en la mitad de la ventana
+                platformI = Platform((SCREEN_WIDTH-150)//2, SCREEN_HEIGHT-100, 150, False)
+                platformsGroup.add(platformI)        #Se agrega la plataforma al grupo de plataformas
+                #------ Reinicio de enemigos  ----------------------------------------------------------
+                enemiesGroup.empty() #Se eliminan todas las plataformas presentes en el grupo
 
 
 
-    #------ Manejo de eventos  ------------------------------------------------------------------
-    #------ pygame.event.get() obtendrá todos los eventos y los eliminará de la cola ------------
+
+
+    #------ Manejo de eventos  -------------------------------------------------------------------------
+    #------ pygame.event.get() obtendrá todos los eventos y los eliminará de la cola -------------------
     for event in pygame.event.get():
-        #------ el evento es de tipo QUIT cuando se presiona el boton "X" de la ventana ---------
+        #------ el evento es de tipo QUIT cuando se presiona el boton "X" de la ventana ----------------
         if event.type == pygame.QUIT:
+
+            #------ Actualización de puntaje más alto  -------------------------------------------------
+            if Score > High_score: #Se reconoce si el score actual es más alto que el score más alto
+                High_score = Score #En caso de ser más alto, se reemplaza
+                with open('highScore.txt', 'w') as file: #Se debe almacenar y para ello se usa un txt
+                    file.write(str(High_score))
+
             playing = False #Se termina el ciclo para permitir el cierre de la ventana 
 
-        #------ Eventos para el manejo del personaje, desplazamientos ---------------------------     
+        #------ Eventos para el manejo del personaje, desplazamientos ----------------------------------   
         if event.type == pygame.KEYDOWN:
             #activación de movimiento hacia la izquierda al presionar tecla 'izquierda'
             if event.key == pygame.K_LEFT:      
@@ -547,11 +859,11 @@ while playing:
             #desactiva el movimiento de salto al soltar la tecla de 'arriba'
             elif event.key == pygame.K_UP:       
                 robotPlayer.UP_KEY = False
-
-    #------ Actualización grafica de la ventana  ------------------------------------------------
+        
+    #------ Actualización grafica de la ventana  -----------------------------------------------------
     pygame.display.update() #Actualiza la ventana, al pasar parametro actualiza una porción
 
 pygame.quit() #Desinicializa todos los módulos de pygame que han sido previamente inicializados
-#------------------------------------------------------------------------------------------------
-#---------------------------  FIN DEL PROGRAMA --------------------------------------------------
-#------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------
+#---------------------------  FIN DEL PROGRAMA -------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------
