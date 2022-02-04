@@ -745,20 +745,19 @@ while playing:
                 cv2.circle(frameArea,tuple(far),4,[255, 0, 0],-1)
         if finger_counting > 0:
             finger_counting += 1
-        cv2.putText(frameArea, str(finger_counting), (0, 50), cv2.FONT_HERSHEY_SIMPLEX,1, (255, 0, 0) , 2, cv2.LINE_AA)
+        cv2.putText(frameArea, str(finger_counting), (3, 30), cv2.FONT_HERSHEY_SIMPLEX,1, (255, 0, 0) , 2, cv2.LINE_AA)
 
-    #---- Mmovimiento de acuerdo al número de dedos en video ------------------------------------------
+    #---- Movimiento de acuerdo al número de dedos en video ------------------------------------------
+    #Movimiento vertical (salto)
     if finger_counting == 5 and robotPlayer.UnlockJump == True:
         robotPlayer.UP_KEY = True      #Luego de saltar se deshabilita el salto hasta una
         robotPlayer.UnlockJump = False #nueva colisión con una plataforma
-
+    #Movimiento horizontal (Izquierda Derecha)    
     if finger_counting == 4:
         robotPlayer.RIGHT_KEY, robotPlayer.FACING_LEFT = True,False
     elif finger_counting == 3:
         robotPlayer.LEFT_KEY, robotPlayer.FACING_LEFT = True,True
-    else:
-        robotPlayer.LEFT_KEY = False
-        robotPlayer.RIGHT_KEY = False
+
     cv2.imshow("webcam", frame)  # muestra los fotogramas captados por la camara
 
     #------------ Logica heredada del juego base, sin integración con open cv -----------------------
