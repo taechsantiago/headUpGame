@@ -39,7 +39,7 @@ while True:
     #Calculo de contornos
     contours, hierarchy = cv2.findContours(close.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)   
 
-    if len(contours)>0:     #Se identifica si en el area de interes se ha encontrado contornos
+    if len(contours) > 0:   #Se identifica si en el area de interes se ha encontrado contornos
         finger_counting = 0 #Variable que se encarga de contar el número de dedos presentes en pantalla
         #Interesa el contorno más grande pues se asume que la mano es la que genera dicho contorno
         hand_segment = max(contours, key=cv2.contourArea) 
